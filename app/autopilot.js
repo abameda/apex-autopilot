@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // ════════════════════════════════════════════════════════════════
 // APEX AUTOPILOT V3 — Final Production Build
-// Brain: Gemini 3.1 Pro | Images: Nano Banana 2 | Schedule: Buffer
+// Brain: Gemini 3.1 Pro | Images: Gemini 3.1 Flash Image
 // ════════════════════════════════════════════════════════════════
 
 // ─── BRAND SYSTEM ───
@@ -211,16 +211,32 @@ ${tl.map((l, i) => `<text x="80" y="${280 + i * 70}" font-family="'Audiowide',sa
 };
 
 // ─── AI PROMPT ───
-const CAPTION_PROMPT = (pillar, type) => `You are the strategist for APEX (@apexagency.xo), a premium Shopify theme brand.
+const CAPTION_PROMPT = (pillar, type, insightsData) => `You are the strategist for APEX (@apexagency.xo), a premium Shopify theme brand.
 
 ${BRAND.knowledge}
 
 BRAND VOICE: ${BRAND.voice}
 
 Create 1 Instagram ${type} for "${pillar.name}" pillar: ${pillar.desc}
+${insightsData ? `
+PERFORMANCE INSIGHTS FROM PREVIOUS POSTS — use these to improve this post:
+- Best performing pillar: ${insightsData.bestPillar || "unknown"}
+- Best day to post: ${insightsData.bestDay || "unknown"}
+- Best time to post: ${insightsData.bestTime || "unknown"}
+- Key learnings: ${(insightsData.insights || []).join(". ")}
+- Recommendations: ${(insightsData.recommendations || []).join(". ")}
+Apply these insights to make this post perform better than previous ones.
+` : ""}
+INSTAGRAM CAPTION RULES:
+- First line = scroll-stopping hook. Use ONE of these styles (vary across posts): bold stat, provocative question, controversial take, "most people don't know" opener, or a before/after contrast.
+- Use 3-5 relevant emojis throughout — not random, each should add meaning.
+- Add real line breaks between paragraphs using \\n\\n (Instagram shows these as actual spacing).
+- Include a clear CTA at the end (save this, share with a friend, link in bio, DM us, etc.)
+- Reference REAL APEX features and stats from the brand knowledge above — be specific, not generic.
+- Caption should be 150-220 words. Not too short, not a wall of text.
 
 Return ONLY valid JSON:
-{"title":"Punchy headline for post image (max 8 words)","subtitle":"Supporting subline (max 15 words)","caption":"Full Instagram caption. Hook first line. Value in body. CTA at end. Reference real APEX features/stats. 150-200 words. Use real line breaks.","hashtags":"#ShopifyTheme #Shopify #Ecommerce #ShopifyStore #ShopifyDesign #OnlineStore #WebDesign #APEXTheme #ConversionRate #ShopifyTips #StoreDesign #EcommerceTips #ShopifyExperts #DropshippingTips #ShopifyDev","bestTime":"e.g. 10:00 AM EST","needsAsset":false,"assetRequest":""}
+{"title":"Punchy headline for post image (max 8 words)","subtitle":"Supporting subline (max 15 words)","caption":"Full Instagram caption following the rules above. Use \\n\\n for line breaks between paragraphs.","hashtags":"Generate 20-25 relevant hashtags. Mix high-volume (#Shopify #Ecommerce #OnlineStore) with niche (#ShopifyTheme #APEXTheme #ConversionRate #ShopifyDesign). Always include #APEXTheme. Vary hashtags per post — NEVER repeat the exact same set.","bestTime":"e.g. 10:00 AM EST","needsAsset":false,"assetRequest":""}
 
 If this post would genuinely benefit from a real screenshot, photo, or custom asset from the brand owner, set needsAsset=true and describe what's needed in assetRequest.`;
 
@@ -232,11 +248,34 @@ ${JSON.stringify(perfData, null, 2)}
 Analyze patterns and return ONLY valid JSON:
 {"insights":["insight1","insight2","insight3"],"bestPillar":"pillar_id","bestDay":"day_name","bestTime":"time","recommendations":["rec1","rec2","rec3"],"adjustments":{"increasePillars":["pillar_id"],"decreasePillars":["pillar_id"],"bestPostTypes":["type"]}}`;
 
+// ─── PILLAR IMAGE PROMPTS ───
+const IMAGE_PROMPT = {
+  showcase: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Premium Shopify theme product showcase. A sleek, modern website mockup displayed on a MacBook Pro and iPhone, floating at a slight angle on a deep dark background (#08080A). Electric Cyan (#00E5CC) soft glow emanating from the screens. Cinematic lighting from top-left, subtle depth of field. Clean, luxurious, tech-forward, minimal composition. Subject: "${title}". ${sub || ""}. Style: 3D render, photorealistic, professional product photography. No text, no watermarks, no logos, no UI elements with readable text.`,
+  beforeafter: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Dramatic split-screen comparison of two online stores. Left half: a dull, outdated, generic e-commerce site with washed-out colors, cluttered layout, grey tones, flat lighting. Right half: a stunning, premium, modern store design on dark background (#08080A) with Electric Cyan (#00E5CC) accent glow, clean typography, sharp product images. A glowing divider line separates the two halves. Cinematic contrast lighting. Subject: "${title}". ${sub || ""}. Style: digital art, high contrast, professional. No text, no watermarks, no readable words.`,
+  tips: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Clean, modern educational graphic. Abstract geometric shapes — circles, lines, grids — arranged in a minimal composition on a deep dark background (#08080A). Electric Cyan (#00E5CC) accent lines and glowing nodes connected by thin lines, suggesting a network or flowchart. Soft ambient lighting, slight bokeh in background. Subject: "${title}". ${sub || ""}. Style: minimal flat design with subtle 3D depth, professional infographic aesthetic. No text, no watermarks, no numbers, no readable words.`,
+  proof: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Social proof and trust visual. Five glowing star icons in Electric Cyan (#00E5CC) floating above a dark surface (#08080A). Subtle reflection below. Warm accent lighting from behind, creating a premium halo effect. Abstract graph or chart in the background showing upward growth trend with cyan glow. Subject: "${title}". ${sub || ""}. Style: 3D render, cinematic lighting, luxury brand aesthetic. No text, no watermarks, no faces, no readable words.`,
+  bts: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Developer workspace behind the scenes. A wide monitor displaying a dark-themed code editor with syntax-highlighted code (cyan, green, purple). Mechanical keyboard, ambient RGB lighting in Electric Cyan (#00E5CC). Dark room (#08080A background), moody cinematic lighting from the screen. Coffee cup nearby, minimal desk setup. Subject: "${title}". ${sub || ""}. Style: photorealistic, atmospheric, shallow depth of field. No text overlays, no watermarks, no readable code.`,
+  education: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Editorial, authoritative educational visual. Abstract data visualization — flowing lines, bar charts, or circular diagrams in Electric Cyan (#00E5CC) on deep dark background (#08080A). Clean geometric composition, magazine-style layout feel. Soft top-down lighting, subtle gradient from dark to slightly lighter at center. Subject: "${title}". ${sub || ""}. Style: modern editorial design, data-art aesthetic, premium and clean. No text, no watermarks, no readable labels.`,
+};
+
+// ─── DATE HELPERS ───
+const getWeekDates = () => {
+  const today = new Date();
+  const monday = new Date(today);
+  const dayOfWeek = today.getDay();
+  monday.setDate(today.getDate() + (dayOfWeek === 0 ? 1 : 8 - dayOfWeek));
+  return DAYS.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  });
+};
+
 // ─── MAIN COMPONENT ───
 export default function ApexAutopilotV3() {
   const [view, setView] = useState("dashboard");
   const [posts, setPosts] = useState([]);
-  const [settings, setSettings] = useState({ geminiKey: "", bufferKey: "", postsPerWeek: 5 });
+  const [settings, setSettings] = useState({ geminiKey: "", postsPerWeek: 5 });
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState({ cur: 0, tot: 0, msg: "" });
   const [selected, setSelected] = useState(null);
@@ -260,11 +299,11 @@ export default function ApexAutopilotV3() {
       try { const r = (() => { try { const v = localStorage.getItem("apex3-images"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setGenImages(JSON.parse(r.value)); } catch (e) {}
     })();
   }, []);
-  useEffect(() => { if (posts.length) localStorage.setItem("apex3-posts", JSON.stringify(posts)).catch(() => {}); }, [posts]);
-  useEffect(() => { localStorage.setItem("apex3-settings", JSON.stringify(settings)).catch(() => {}); }, [settings]);
-  useEffect(() => { if (performance.length) localStorage.setItem("apex3-perf", JSON.stringify(performance)).catch(() => {}); }, [performance]);
-  useEffect(() => { if (insights) localStorage.setItem("apex3-insights", JSON.stringify(insights)).catch(() => {}); }, [insights]);
-  useEffect(() => { if (Object.keys(genImages).length) localStorage.setItem("apex3-images", JSON.stringify(genImages)).catch(() => {}); }, [genImages]);
+  useEffect(() => { try { if (posts.length) localStorage.setItem("apex3-posts", JSON.stringify(posts)); } catch (e) {} }, [posts]);
+  useEffect(() => { try { localStorage.setItem("apex3-settings", JSON.stringify(settings)); } catch (e) {} }, [settings]);
+  useEffect(() => { try { if (performance.length) localStorage.setItem("apex3-perf", JSON.stringify(performance)); } catch (e) {} }, [performance]);
+  useEffect(() => { try { if (insights) localStorage.setItem("apex3-insights", JSON.stringify(insights)); } catch (e) {} }, [insights]);
+  useEffect(() => { try { if (Object.keys(genImages).length) localStorage.setItem("apex3-images", JSON.stringify(genImages)); } catch (e) {} }, [genImages]);
 
   const notify = (m, t = "ok") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); };
   const hasKey = !!settings.geminiKey;
@@ -276,7 +315,7 @@ export default function ApexAutopilotV3() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
         apiKey: settings.geminiKey,
         payload: {
           contents: [{ parts: [{ text: prompt }] }],
@@ -289,7 +328,7 @@ export default function ApexAutopilotV3() {
     return d.candidates[0].content.parts[0].text;
   };
 
-  // ─── NANO BANANA 2 IMAGE GEN ───
+  // ─── GEMINI 3.1 FLASH IMAGE GEN ───
   const generateImage = async (postId, prompt) => {
     if (!settings.geminiKey) { notify("Gemini key needed for images", "err"); return; }
     setGenImgLoading(p => ({ ...p, [postId]: true }));
@@ -298,7 +337,7 @@ export default function ApexAutopilotV3() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent",
+          endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
           apiKey: settings.geminiKey,
           payload: {
             contents: [{ parts: [{ text: `Generate a 1080x1080 Instagram post image. Brand: APEX Agency, premium Shopify theme. Style: dark background (#08080A), clean, premium, tech-forward. ${prompt}` }] }],
@@ -324,45 +363,48 @@ export default function ApexAutopilotV3() {
   const generateWeek = async () => {
     setGenerating(true);
     const n = settings.postsPerWeek;
-    const totalSteps = n * 2; // caption + image for each
+    const totalSteps = n * 2;
     setProgress({ cur: 0, tot: totalSteps, msg: "Planning..." });
     const newPosts = [];
+    const dates = getWeekDates();
     try {
       for (let i = 0; i < n; i++) {
         const pillar = PILLARS[i % PILLARS.length];
         const type = TYPES[i % TYPES.length];
         const day = DAYS[i % 7];
-        setProgress({ cur: i * 2, tot: totalSteps, msg: `Writing ${day} — ${pillar.name}...` });
+        const date = dates[i % 7];
+        setProgress({ cur: i * 2, tot: totalSteps, msg: `Writing ${day} ${date} — ${pillar.name}...` });
         let post;
         try {
-          const raw = await callGemini(CAPTION_PROMPT(pillar, type));
+          const raw = await callGemini(CAPTION_PROMPT(pillar, type, insights));
           const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
           post = {
             id: `p${Date.now()}${i}`, ...parsed,
-            pillar: pillar.id, type, day, status: parsed.needsAsset ? "needs-asset" : "draft",
+            pillar: pillar.id, type, day, date, status: parsed.needsAsset ? "needs-asset" : "draft",
             week: weekLabel(), createdAt: new Date().toISOString()
           };
         } catch (err) {
           post = {
             id: `p${Date.now()}${i}`, title: `${pillar.name} Post`, subtitle: "Edit manually",
             caption: `[Failed: ${err.message}]`, hashtags: "#ShopifyTheme #APEX", bestTime: "10:00 AM EST",
-            needsAsset: false, assetRequest: "", pillar: pillar.id, type, day,
+            needsAsset: false, assetRequest: "", pillar: pillar.id, type, day, date,
             status: "draft", week: weekLabel(), createdAt: new Date().toISOString()
           };
         }
         newPosts.push(post);
 
-        // Auto-generate AI image
+        // Auto-generate AI image with pillar-specific prompt
         setProgress({ cur: i * 2 + 1, tot: totalSteps, msg: `Generating image for ${day}...` });
         try {
+          const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
           const imgRes = await fetch("/api/gemini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent",
+              endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
               apiKey: settings.geminiKey,
               payload: {
-                contents: [{ parts: [{ text: `Generate a 1080x1080 Instagram post image. Brand: APEX Agency, premium Shopify theme. Style: dark background (#08080A), clean, premium, tech-forward, Electric Cyan (#00E5CC) accents. ${post.title}. ${post.subtitle || ""}` }] }],
+                contents: [{ parts: [{ text: imgPromptFn(post.title, post.subtitle) }] }],
                 generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
               }
             })
@@ -387,6 +429,55 @@ export default function ApexAutopilotV3() {
   };
 
   const weekLabel = () => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return `Week of ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`; };
+
+  // ─── COPY TO CLIPBOARD ───
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => notify("Copied to clipboard!")).catch(() => {
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); notify("Copied!");
+    });
+  };
+
+  // ─── REGENERATE SINGLE POST ───
+  const [regenLoading, setRegenLoading] = useState(null);
+  const regeneratePost = async (post) => {
+    if (!hasKey) { notify("Set Gemini API key first", "err"); return; }
+    const pillar = PILLARS.find(p => p.id === post.pillar) || PILLARS[0];
+    setRegenLoading(post.id);
+    try {
+      const raw = await callGemini(CAPTION_PROMPT(pillar, post.type, insights));
+      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+      const updated = { ...post, ...parsed, status: parsed.needsAsset ? "needs-asset" : "draft" };
+      setPosts(p => p.map(x => x.id === post.id ? updated : x));
+      setSelected(updated);
+      setEditCaption(parsed.caption);
+
+      // Also regenerate image with pillar-specific prompt
+      const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
+      try {
+        const imgRes = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
+            apiKey: settings.geminiKey,
+            payload: {
+              contents: [{ parts: [{ text: imgPromptFn(parsed.title, parsed.subtitle) }] }],
+              generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
+            }
+          })
+        });
+        if (imgRes.ok) {
+          const imgData = await imgRes.json();
+          const imgPart = imgData.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+          if (imgPart) {
+            setGenImages(prev => ({ ...prev, [post.id]: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}` }));
+          }
+        }
+      } catch (imgErr) {}
+      notify("Post regenerated with new caption + image!");
+    } catch (err) { notify(err.message, "err"); }
+    finally { setRegenLoading(null); }
+  };
 
   // ─── SELF-LEARNING ───
   const runLearning = async () => {
@@ -527,7 +618,7 @@ export default function ApexAutopilotV3() {
           </div>
           <div>
             <h1 style={{ fontSize: 14, fontWeight: 700, margin: 0, letterSpacing: "3px", fontFamily: "Audiowide" }}>APEX AUTOPILOT</h1>
-            <p style={{ fontSize: 9, color: s.t3, margin: 0, letterSpacing: "2px" }}>GEMINI 3.1 PRO × NANO BANANA 2</p>
+            <p style={{ fontSize: 9, color: s.t3, margin: 0, letterSpacing: "2px" }}>GEMINI 3.1 PRO × GEMINI 3.1 FLASH IMAGE</p>
           </div>
         </div>
         <nav style={{ display: "flex", gap: 2, alignItems: "center" }}>
@@ -575,7 +666,7 @@ export default function ApexAutopilotV3() {
             <div style={{ background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.1)`, padding: 14, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: s.accent, margin: "0 0 2px", fontFamily: "Audiowide" }}>
-                  {!hasKey ? "⚠ Set Gemini API key in Settings" : stats.needsAsset > 0 ? `${stats.needsAsset} post${stats.needsAsset > 1 ? "s" : ""} need your input` : "AI ready — Gemini 3.1 Pro + Nano Banana 2"}
+                  {!hasKey ? "⚠ Set Gemini API key in Settings" : stats.needsAsset > 0 ? `${stats.needsAsset} post${stats.needsAsset > 1 ? "s" : ""} need your input` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
                 </p>
                 <p style={{ fontSize: 10, color: s.t3, margin: 0 }}>
                   {hasKey ? "One API key powers everything — text & images" : ""}
@@ -637,7 +728,7 @@ export default function ApexAutopilotV3() {
                         <div style={{ minWidth: 0 }}>
                           <p style={{ fontSize: 12, fontWeight: 500, margin: "0 0 2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</p>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 9, color: s.t3 }}>{post.day}</span>
+                            <span style={{ fontSize: 9, color: s.t3 }}>{post.day}{post.date ? `, ${post.date}` : ""}</span>
                             <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)" }}>·</span>
                             <span style={{ fontSize: 9, color: s.t3 }}>{post.type}</span>
                             <span style={{ fontSize: 9, color: pil.color, opacity: 0.7 }}>{pil.emoji} {pil.name}</span>
@@ -860,11 +951,11 @@ export default function ApexAutopilotV3() {
           {view === "guide" && (<div style={{ maxWidth: 520 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px", fontFamily: "Audiowide", letterSpacing: "2px" }}>SETUP GUIDE</h2>
             {[
-              { s: "1", t: "Get Gemini API Key", done: hasKey, d: ["Go to aistudio.google.com", "Click 'Get API Key' → Create", "One key powers both text (3.1 Pro) and images (NB2)", "Paste in Settings panel"] },
-              { s: "2", t: "Set Up Buffer (optional)", done: !!settings.bufferKey, d: ["Sign up at buffer.com (free plan)", "Connect @apexagency.xo Instagram", "Settings → API → Generate Key"] },
-              { s: "3", t: "Generate Content", done: posts.length > 0, d: ["Go to Generate tab", "AI creates captions from your real site data", "Posts needing your photos get flagged"] },
-              { s: "4", t: "Review & Download", done: stats.approved > 0, d: ["Click posts to preview branded templates", "Edit captions, generate AI images", "Download SVG → screenshot → upload"] },
-              { s: "5", t: "Track & Learn", done: performance.length > 0, d: ["After publishing, log stats in Learn tab", "AI analyzes what works best", "Next batch auto-adjusts based on insights"] }
+              { s: "1", t: "Get Gemini API Key", done: hasKey, d: ["Go to aistudio.google.com", "Click 'Get API Key' → Create", "One key powers both text (3.1 Pro) and images (3.1 Flash Image)", "Paste in Settings panel"] },
+              { s: "2", t: "Generate Content", done: posts.length > 0, d: ["Go to Generate tab", "AI creates captions from your real site data", "Posts needing your photos get flagged"] },
+              { s: "3", t: "Review & Download", done: stats.approved > 0, d: ["Click posts to preview branded templates", "Edit captions, regenerate any post you don't like", "Copy caption + hashtags, download images"] },
+              { s: "4", t: "Post to Instagram", done: false, d: ["Open Instagram, paste caption from clipboard", "Upload the AI image or SVG screenshot", "Post at the recommended time shown in the tool"] },
+              { s: "5", t: "Track & Learn", done: performance.length > 0, d: ["After publishing, log stats in Learn tab", "AI analyzes what works best", "Next batch auto-adjusts based on your real insights"] }
             ].map(x => (
               <div key={x.s} style={{ background: s.surface, border: `1px solid ${s.border}`, padding: 14, marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -888,7 +979,12 @@ export default function ApexAutopilotV3() {
               <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: s.t3, fontSize: 16, cursor: "pointer" }}>×</button>
             </div>
 
-            <div style={{ marginBottom: 10 }}><Badge status={selected.status} /></div>
+            <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              <Badge status={selected.status} />
+              {selected.date && <span style={{ fontSize: 9, color: s.t3 }}>{selected.day}, {selected.date}</span>}
+              {!selected.date && <span style={{ fontSize: 9, color: s.t3 }}>{selected.day}</span>}
+              <span style={{ fontSize: 9, color: s.t3 }}>· {selected.type}</span>
+            </div>
 
             {/* Asset Request */}
             {selected.needsAsset && (
@@ -903,7 +999,7 @@ export default function ApexAutopilotV3() {
               <div dangerouslySetInnerHTML={{ __html: getSVG(selected) }} style={{ width: "100%", border: `1px solid ${s.border}` }} />
               <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
                 <Btn small onClick={() => downloadSVG(selected)} style={{ flex: 1 }}>↓ Download SVG</Btn>
-                <Btn small onClick={() => generateImage(selected.id, `Instagram post for ${selected.title}. ${selected.subtitle || ""}`)} disabled={genImgLoading[selected.id] || !hasKey} style={{ flex: 1, color: s.accent, borderColor: "rgba(0,229,204,0.2)" }}>
+                <Btn small onClick={() => { const fn = IMAGE_PROMPT[selected.pillar] || IMAGE_PROMPT.showcase; generateImage(selected.id, fn(selected.title, selected.subtitle)); }} disabled={genImgLoading[selected.id] || !hasKey} style={{ flex: 1, color: s.accent, borderColor: "rgba(0,229,204,0.2)" }}>
                   {genImgLoading[selected.id] ? "Generating..." : "✦ AI Image"}
                 </Btn>
               </div>
@@ -912,24 +1008,44 @@ export default function ApexAutopilotV3() {
             {/* AI Generated Image */}
             {genImages[selected.id] && (
               <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 9, color: s.t3, letterSpacing: "1.5px", margin: "0 0 4px" }}>NANO BANANA 2 IMAGE</p>
+                <p style={{ fontSize: 9, color: s.t3, letterSpacing: "1.5px", margin: "0 0 4px" }}>GEMINI 3.1 FLASH IMAGE</p>
                 <img src={genImages[selected.id]} alt="" style={{ width: "100%", border: `1px solid ${s.border}` }} />
               </div>
             )}
 
             {/* Caption */}
             <div style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", margin: "0 0 4px" }}>CAPTION</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", margin: 0 }}>CAPTION</p>
+                <span style={{ fontSize: 9, color: editCaption.length > 2200 ? "#EF4444" : s.t3 }}>{editCaption.length}/2,200</span>
+              </div>
               <textarea value={editCaption} onChange={e => setEditCaption(e.target.value)}
                 onBlur={() => { updateCap(selected.id, editCaption); setSelected({ ...selected, caption: editCaption }); }}
                 style={{ width: "100%", minHeight: 130, background: s.surface, border: `1px solid ${s.border}`, padding: 8, color: s.t1, fontSize: 10, lineHeight: 1.7, resize: "vertical", fontFamily: "Outfit", boxSizing: "border-box" }} />
+              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                <Btn small onClick={() => copyToClipboard(`${editCaption}\n\n${selected.hashtags}`)} style={{ flex: 1, color: "#60A5FA", borderColor: "rgba(96,165,250,0.2)" }}>
+                  COPY CAPTION + HASHTAGS
+                </Btn>
+                <Btn small onClick={() => copyToClipboard(editCaption)} style={{ flex: 1 }}>COPY CAPTION</Btn>
+              </div>
             </div>
 
             {/* Hashtags */}
             <div style={{ marginBottom: 12 }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", margin: "0 0 4px" }}>HASHTAGS</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", margin: 0 }}>HASHTAGS</p>
+                <Btn small onClick={() => copyToClipboard(selected.hashtags)} style={{ padding: "2px 6px", fontSize: 8 }}>COPY</Btn>
+              </div>
               <p style={{ fontSize: 9, color: "rgba(96,165,250,0.5)", margin: 0, lineHeight: 1.8, wordBreak: "break-all" }}>{selected.hashtags}</p>
             </div>
+
+            {/* Best Time */}
+            {selected.bestTime && (
+              <div style={{ marginBottom: 12, padding: "6px 10px", background: "rgba(0,229,204,0.04)", border: `1px solid rgba(0,229,204,0.1)` }}>
+                <span style={{ fontSize: 9, color: s.t3, letterSpacing: "1px" }}>BEST TIME TO POST: </span>
+                <span style={{ fontSize: 10, color: s.accent, fontWeight: 600 }}>{selected.bestTime}</span>
+              </div>
+            )}
 
             {/* Actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 14 }}>
@@ -940,9 +1056,12 @@ export default function ApexAutopilotV3() {
               )}
               {selected.status === "approved" && (
                 <Btn onClick={() => downloadSVG(selected)} style={{ width: "100%", color: "#60A5FA", borderColor: "rgba(96,165,250,0.2)" }}>
-                  ↓ DOWNLOAD & UPLOAD TO BUFFER
+                  ↓ DOWNLOAD FOR POSTING
                 </Btn>
               )}
+              <Btn onClick={() => regeneratePost(selected)} disabled={regenLoading === selected.id || !hasKey} style={{ width: "100%", color: "#A78BFA", borderColor: "rgba(167,139,250,0.2)" }}>
+                {regenLoading === selected.id ? "REGENERATING..." : "↻ REGENERATE POST"}
+              </Btn>
               <Btn danger small onClick={() => del(selected.id)} style={{ width: "100%" }}>Delete</Btn>
             </div>
           </aside>
@@ -956,21 +1075,16 @@ export default function ApexAutopilotV3() {
               <button onClick={() => setShowSettings(false)} style={{ background: "none", border: "none", color: s.t3, fontSize: 16, cursor: "pointer" }}>×</button>
             </div>
 
-            {[
-              { k: "geminiKey", l: "GEMINI API KEY", ph: "AI...", hint: "aistudio.google.com → Get API Key. Powers BOTH text (3.1 Pro) and images (Nano Banana 2)." },
-              { k: "bufferKey", l: "BUFFER API KEY (optional)", ph: "access token", hint: "buffer.com → Settings → API. For auto-scheduling." }
-            ].map(f => (
-              <div key={f.k} style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", display: "block", marginBottom: 4 }}>{f.l}</label>
-                <input type="password" value={settings[f.k] || ""} onChange={e => setSettings(p => ({ ...p, [f.k]: e.target.value }))} placeholder={f.ph}
-                  style={{ width: "100%", padding: 8, background: s.surface, border: `1px solid ${s.border}`, color: s.t1, fontSize: 11, fontFamily: "JetBrains Mono", boxSizing: "border-box" }} />
-                <p style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", margin: "3px 0 0" }}>{f.hint}</p>
-              </div>
-            ))}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", display: "block", marginBottom: 4 }}>GEMINI API KEY</label>
+              <input type="password" value={settings.geminiKey || ""} onChange={e => setSettings(p => ({ ...p, geminiKey: e.target.value }))} placeholder="AI..."
+                style={{ width: "100%", padding: 8, background: s.surface, border: `1px solid ${s.border}`, color: s.t1, fontSize: 11, fontFamily: "JetBrains Mono", boxSizing: "border-box" }} />
+              <p style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", margin: "3px 0 0" }}>aistudio.google.com → Get API Key. Powers BOTH text (3.1 Pro) and images (3.1 Flash Image).</p>
+            </div>
 
             <div style={{ marginTop: 16, padding: 10, background: s.surface, border: `1px solid ${s.border}` }}>
               <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, margin: "0 0 6px", letterSpacing: "1px" }}>STATUS</p>
-              {[{ l: "Gemini 3.1 Pro (text)", ok: hasKey }, { l: "Nano Banana 2 (images)", ok: hasKey }, { l: "Buffer (scheduling)", ok: !!settings.bufferKey }].map(x => (
+              {[{ l: "Gemini 3.1 Pro (text)", ok: hasKey }, { l: "Gemini 3.1 Flash Image", ok: hasKey }].map(x => (
                 <div key={x.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
                   <span style={{ color: s.t3 }}>{x.l}</span>
                   <span style={{ color: x.ok ? s.accent : "#EF4444" }}>{x.ok ? "✓" : "✗"}</span>
@@ -982,7 +1096,7 @@ export default function ApexAutopilotV3() {
               <p style={{ fontSize: 9, fontWeight: 600, color: s.accent, margin: "0 0 4px" }}>MONTHLY COST</p>
               <p style={{ fontSize: 9, color: s.t3, margin: 0, lineHeight: 1.7 }}>
                 Gemini 3.1 Pro (20 captions): ~$0.16<br />
-                Nano Banana 2 (20 images): ~$1.34<br />
+                Gemini 3.1 Flash Image (20 images): ~$1.34<br />
                 <strong style={{ color: s.t2 }}>Total: ~$1.50/month</strong>
               </p>
             </div>

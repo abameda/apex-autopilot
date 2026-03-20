@@ -2,7 +2,7 @@
 
 AI-powered Instagram content management for APEX Agency.
 
-**Stack:** Next.js 14 + Gemini 3.1 Pro (text) + Nano Banana 2 (images)
+**Stack:** Next.js 16 + Gemini 3.1 Pro (text) + Gemini 3.1 Flash Image (images)
 
 ---
 
@@ -54,7 +54,7 @@ npm run dev
 ## How It Works
 
 - **Gemini 3.1 Pro** writes captions using real APEX website data
-- **Nano Banana 2** generates branded images automatically
+- **Gemini 3.1 Flash Image** generates branded images automatically
 - **6 pillar templates** (SVG) ensure consistent brand identity
 - **Self-learning engine** tracks performance and adjusts strategy
 - **Asset request queue** flags posts that need your photos
