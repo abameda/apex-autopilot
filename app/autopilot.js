@@ -273,9 +273,15 @@ const getWeekDates = () => {
 
 // ─── MAIN COMPONENT ───
 export default function ApexAutopilotV3() {
+  const [authed, setAuthed] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [loginPass, setLoginPass] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [hasKey, setHasKey] = useState(false);
+
   const [view, setView] = useState("dashboard");
   const [posts, setPosts] = useState([]);
-  const [settings, setSettings] = useState({ geminiKey: "", postsPerWeek: 5 });
+  const [settings, setSettings] = useState({ postsPerWeek: 5 });
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState({ cur: 0, tot: 0, msg: "" });
   const [selected, setSelected] = useState(null);
@@ -287,16 +293,61 @@ export default function ApexAutopilotV3() {
   const [insights, setInsights] = useState(null);
   const [genImages, setGenImages] = useState({});
   const [genImgLoading, setGenImgLoading] = useState({});
-  const [tab, setTab] = useState("all"); // for filtering
+  const [tab, setTab] = useState("all");
+
+  const notify = useCallback((m, t = "ok") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
+
+  // ─── AUTH ───
+  useEffect(() => {
+    const token = localStorage.getItem("apex3-auth");
+    if (token) {
+      fetch("/api/auth", { headers: { authorization: token } })
+        .then(r => r.json())
+        .then(d => { if (d.authenticated) { setAuthed(true); setAuthToken(token); setHasKey(!!d.hasGeminiKey); } })
+        .catch(() => {})
+        .finally(() => setAuthLoading(false));
+    } else {
+      fetch("/api/auth")
+        .then(r => r.json())
+        .then(d => { if (d.authenticated) { setAuthed(true); setAuthToken("no-auth-required"); setHasKey(!!d.hasGeminiKey); } })
+        .catch(() => {})
+        .finally(() => setAuthLoading(false));
+    }
+  }, []);
+
+  const login = async () => {
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: loginPass })
+      });
+      const data = await res.json();
+      if (data.authenticated) {
+        localStorage.setItem("apex3-auth", data.token);
+        setAuthToken(data.token);
+        setHasKey(!!data.hasGeminiKey);
+        setAuthed(true);
+      } else {
+        notify("Wrong password", "err");
+      }
+    } catch (err) { notify("Login failed", "err"); }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("apex3-auth");
+    setAuthed(false);
+    setAuthToken("");
+  };
 
   // ─── PERSISTENCE ───
   useEffect(() => {
     (async () => {
-      try { const r = (() => { try { const v = localStorage.getItem("apex3-posts"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setPosts(JSON.parse(r.value)); } catch (e) {}
-      try { const r = (() => { try { const v = localStorage.getItem("apex3-settings"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setSettings(p => ({ ...p, ...JSON.parse(r.value) })); } catch (e) {}
-      try { const r = (() => { try { const v = localStorage.getItem("apex3-perf"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setPerformance(JSON.parse(r.value)); } catch (e) {}
-      try { const r = (() => { try { const v = localStorage.getItem("apex3-insights"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setInsights(JSON.parse(r.value)); } catch (e) {}
-      try { const r = (() => { try { const v = localStorage.getItem("apex3-images"); return v ? { value: v } : null; } catch(e) { return null; } })(); if (r?.value) setGenImages(JSON.parse(r.value)); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-posts"); if (v) setPosts(JSON.parse(v)); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-settings"); if (v) setSettings(p => ({ ...p, ...JSON.parse(v) })); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-perf"); if (v) setPerformance(JSON.parse(v)); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-insights"); if (v) setInsights(JSON.parse(v)); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-images"); if (v) setGenImages(JSON.parse(v)); } catch (e) {}
     })();
   }, []);
   useEffect(() => { try { if (posts.length) localStorage.setItem("apex3-posts", JSON.stringify(posts)); } catch (e) {} }, [posts]);
@@ -305,18 +356,18 @@ export default function ApexAutopilotV3() {
   useEffect(() => { try { if (insights) localStorage.setItem("apex3-insights", JSON.stringify(insights)); } catch (e) {} }, [insights]);
   useEffect(() => { try { if (Object.keys(genImages).length) localStorage.setItem("apex3-images", JSON.stringify(genImages)); } catch (e) {} }, [genImages]);
 
-  const notify = (m, t = "ok") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); };
-  const hasKey = !!settings.geminiKey;
-
   // ─── GEMINI API ───
+  const apiHeaders = useCallback(() => ({
+    "Content-Type": "application/json",
+    ...(authToken ? { authorization: authToken } : {})
+  }), [authToken]);
+
   const callGemini = async (prompt, json = true) => {
-    if (!settings.geminiKey) throw new Error("Gemini API key not set");
     const res = await fetch("/api/gemini", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({
         endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
-        apiKey: settings.geminiKey,
         payload: {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.85, ...(json ? { responseMimeType: "application/json" } : {}) }
@@ -330,17 +381,15 @@ export default function ApexAutopilotV3() {
 
   // ─── GEMINI 3.1 FLASH IMAGE GEN ───
   const generateImage = async (postId, prompt) => {
-    if (!settings.geminiKey) { notify("Gemini key needed for images", "err"); return; }
     setGenImgLoading(p => ({ ...p, [postId]: true }));
     try {
       const res = await fetch("/api/gemini", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: apiHeaders(),
         body: JSON.stringify({
           endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
-          apiKey: settings.geminiKey,
           payload: {
-            contents: [{ parts: [{ text: `Generate a 1080x1080 Instagram post image. Brand: APEX Agency, premium Shopify theme. Style: dark background (#08080A), clean, premium, tech-forward. ${prompt}` }] }],
+            contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
           }
         })
@@ -399,10 +448,10 @@ export default function ApexAutopilotV3() {
           const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
           const imgRes = await fetch("/api/gemini", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: apiHeaders(),
             body: JSON.stringify({
               endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
-              apiKey: settings.geminiKey,
+
               payload: {
                 contents: [{ parts: [{ text: imgPromptFn(post.title, post.subtitle) }] }],
                 generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
@@ -440,7 +489,7 @@ export default function ApexAutopilotV3() {
   // ─── REGENERATE SINGLE POST ───
   const [regenLoading, setRegenLoading] = useState(null);
   const regeneratePost = async (post) => {
-    if (!hasKey) { notify("Set Gemini API key first", "err"); return; }
+    if (!hasKey) { notify("API key not configured on server", "err"); return; }
     const pillar = PILLARS.find(p => p.id === post.pillar) || PILLARS[0];
     setRegenLoading(post.id);
     try {
@@ -456,10 +505,9 @@ export default function ApexAutopilotV3() {
       try {
         const imgRes = await fetch("/api/gemini", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: apiHeaders(),
           body: JSON.stringify({
             endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
-            apiKey: settings.geminiKey,
             payload: {
               contents: [{ parts: [{ text: imgPromptFn(parsed.title, parsed.subtitle) }] }],
               generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
@@ -603,6 +651,53 @@ export default function ApexAutopilotV3() {
   // ════════════════════════════════════════
   // RENDER
   // ════════════════════════════════════════
+
+  // Loading
+  if (authLoading) return (
+    <div style={{ fontFamily: "'Outfit', system-ui, sans-serif", background: s.bg, color: s.t1, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 48, height: 48, background: s.accent, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+          <svg width="28" height="28" viewBox="0 0 80 80"><path d="M8 68 L35 15 L48 40 L35 40 L58 40 L45 15 L72 68" fill="none" stroke="#08080A" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round"/></svg>
+        </div>
+        <p style={{ fontSize: 10, color: s.t3, letterSpacing: "2px" }}>LOADING...</p>
+      </div>
+    </div>
+  );
+
+  // Login screen
+  if (!authed) return (
+    <div style={{ fontFamily: "'Outfit', system-ui, sans-serif", background: s.bg, color: s.t1, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {toast && <div style={{ position: "fixed", top: 16, right: 16, zIndex: 9999, padding: "10px 18px", fontSize: 12, fontWeight: 500, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#EF4444", animation: "fadeIn .25s" }}>{toast.m}</div>}
+      <div style={{ width: 340, padding: 32, background: s.surface, border: `1px solid ${s.border}` }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ width: 56, height: 56, background: s.accent, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+            <svg width="32" height="32" viewBox="0 0 80 80"><path d="M8 68 L35 15 L48 40 L35 40 L58 40 L45 15 L72 68" fill="none" stroke="#08080A" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round"/></svg>
+          </div>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", fontFamily: "Audiowide", letterSpacing: "4px" }}>APEX AUTOPILOT</h1>
+          <p style={{ fontSize: 9, color: s.t3, margin: 0, letterSpacing: "2px" }}>INSTAGRAM COMMAND CENTER</p>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", display: "block", marginBottom: 6 }}>PASSWORD</label>
+          <input
+            type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && login()}
+            placeholder="Enter password"
+            autoFocus
+            style={{ width: "100%", padding: 10, background: s.elevated, border: `1px solid ${s.border}`, color: s.t1, fontSize: 12, fontFamily: "JetBrains Mono", boxSizing: "border-box", letterSpacing: "2px" }}
+          />
+        </div>
+        <button onClick={login} style={{
+          width: "100%", padding: "12px", border: "none", background: s.accent, color: s.bg,
+          fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "Audiowide", letterSpacing: "2px"
+        }}>UNLOCK</button>
+      </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        * { box-sizing: border-box; }
+      `}</style>
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: "'Outfit', system-ui, sans-serif", background: s.bg, color: s.t1, minHeight: "100vh" }}>
 
@@ -666,10 +761,10 @@ export default function ApexAutopilotV3() {
             <div style={{ background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.1)`, padding: 14, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: s.accent, margin: "0 0 2px", fontFamily: "Audiowide" }}>
-                  {!hasKey ? "⚠ Set Gemini API key in Settings" : stats.needsAsset > 0 ? `${stats.needsAsset} post${stats.needsAsset > 1 ? "s" : ""} need your input` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
+                  {!hasKey ? "⚠ Set GEMINI_API_KEY in Vercel env vars" : stats.needsAsset > 0 ? `${stats.needsAsset} post${stats.needsAsset > 1 ? "s" : ""} need your input` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
                 </p>
                 <p style={{ fontSize: 10, color: s.t3, margin: 0 }}>
-                  {hasKey ? "One API key powers everything — text & images" : ""}
+                  {hasKey ? "API key configured on server — secure and ready" : "Vercel Dashboard → Settings → Environment Variables"}
                 </p>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -710,7 +805,7 @@ export default function ApexAutopilotV3() {
             {filteredPosts.length === 0 ? (
               <div style={{ textAlign: "center", padding: "50px 20px", border: `1px dashed ${s.border}` }}>
                 <p style={{ fontSize: 32, margin: "0 0 8px", color: s.accent }}>▲</p>
-                <p style={{ fontSize: 12, color: s.t3 }}>{hasKey ? "Hit Generate Week to start" : "Set up your Gemini key first"}</p>
+                <p style={{ fontSize: 12, color: s.t3 }}>{hasKey ? "Hit Generate Week to start" : "Configure GEMINI_API_KEY in Vercel first"}</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -824,7 +919,7 @@ export default function ApexAutopilotV3() {
             <p style={{ fontSize: 11, color: s.t3, margin: "0 0 20px" }}>Gemini 3.1 Pro writes captions from your real website data. Each post gets a branded SVG template. Posts that need your photos will be flagged.</p>
 
             {!hasKey && <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.12)", padding: 12, marginBottom: 14 }}>
-              <p style={{ fontSize: 11, color: "#EF4444", margin: 0 }}>⚠ Set your Gemini API key in Settings first.</p>
+              <p style={{ fontSize: 11, color: "#EF4444", margin: 0 }}>⚠ Set GEMINI_API_KEY in your Vercel environment variables first.</p>
             </div>}
 
             <div style={{ marginBottom: 18 }}>
@@ -951,7 +1046,7 @@ export default function ApexAutopilotV3() {
           {view === "guide" && (<div style={{ maxWidth: 520 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px", fontFamily: "Audiowide", letterSpacing: "2px" }}>SETUP GUIDE</h2>
             {[
-              { s: "1", t: "Get Gemini API Key", done: hasKey, d: ["Go to aistudio.google.com", "Click 'Get API Key' → Create", "One key powers both text (3.1 Pro) and images (3.1 Flash Image)", "Paste in Settings panel"] },
+              { s: "1", t: "Configure API Key", done: hasKey, d: ["Go to aistudio.google.com → Get API Key", "Open Vercel Dashboard → Settings → Environment Variables", "Add GEMINI_API_KEY with your key", "Add SITE_PASSWORD with your chosen password", "Redeploy for changes to take effect"] },
               { s: "2", t: "Generate Content", done: posts.length > 0, d: ["Go to Generate tab", "AI creates captions from your real site data", "Posts needing your photos get flagged"] },
               { s: "3", t: "Review & Download", done: stats.approved > 0, d: ["Click posts to preview branded templates", "Edit captions, regenerate any post you don't like", "Copy caption + hashtags, download images"] },
               { s: "4", t: "Post to Instagram", done: false, d: ["Open Instagram, paste caption from clipboard", "Upload the AI image or SVG screenshot", "Post at the recommended time shown in the tool"] },
@@ -1075,24 +1170,23 @@ export default function ApexAutopilotV3() {
               <button onClick={() => setShowSettings(false)} style={{ background: "none", border: "none", color: s.t3, fontSize: 16, cursor: "pointer" }}>×</button>
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", display: "block", marginBottom: 4 }}>GEMINI API KEY</label>
-              <input type="password" value={settings.geminiKey || ""} onChange={e => setSettings(p => ({ ...p, geminiKey: e.target.value }))} placeholder="AI..."
-                style={{ width: "100%", padding: 8, background: s.surface, border: `1px solid ${s.border}`, color: s.t1, fontSize: 11, fontFamily: "JetBrains Mono", boxSizing: "border-box" }} />
-              <p style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", margin: "3px 0 0" }}>aistudio.google.com → Get API Key. Powers BOTH text (3.1 Pro) and images (3.1 Flash Image).</p>
-            </div>
-
-            <div style={{ marginTop: 16, padding: 10, background: s.surface, border: `1px solid ${s.border}` }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, margin: "0 0 6px", letterSpacing: "1px" }}>STATUS</p>
+            <div style={{ padding: 10, background: s.surface, border: `1px solid ${s.border}`, marginBottom: 12 }}>
+              <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, margin: "0 0 6px", letterSpacing: "1px" }}>SERVER STATUS</p>
               {[{ l: "Gemini 3.1 Pro (text)", ok: hasKey }, { l: "Gemini 3.1 Flash Image", ok: hasKey }].map(x => (
                 <div key={x.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
                   <span style={{ color: s.t3 }}>{x.l}</span>
-                  <span style={{ color: x.ok ? s.accent : "#EF4444" }}>{x.ok ? "✓" : "✗"}</span>
+                  <span style={{ color: x.ok ? s.accent : "#EF4444" }}>{x.ok ? "✓ Connected" : "✗ Not configured"}</span>
                 </div>
               ))}
+              {!hasKey && (
+                <p style={{ fontSize: 8, color: "#EF4444", margin: "6px 0 0", lineHeight: 1.5 }}>
+                  Set GEMINI_API_KEY in your Vercel environment variables.
+                  Vercel Dashboard → Settings → Environment Variables.
+                </p>
+              )}
             </div>
 
-            <div style={{ marginTop: 10, padding: 10, background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.08)` }}>
+            <div style={{ padding: 10, background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.08)`, marginBottom: 12 }}>
               <p style={{ fontSize: 9, fontWeight: 600, color: s.accent, margin: "0 0 4px" }}>MONTHLY COST</p>
               <p style={{ fontSize: 9, color: s.t3, margin: 0, lineHeight: 1.7 }}>
                 Gemini 3.1 Pro (20 captions): ~$0.16<br />
@@ -1100,6 +1194,8 @@ export default function ApexAutopilotV3() {
                 <strong style={{ color: s.t2 }}>Total: ~$1.50/month</strong>
               </p>
             </div>
+
+            <Btn danger small onClick={logout} style={{ width: "100%" }}>LOGOUT</Btn>
           </aside>
         )}
       </div>
