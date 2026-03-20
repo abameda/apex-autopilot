@@ -249,13 +249,14 @@ Analyze patterns and return ONLY valid JSON:
 {"insights":["insight1","insight2","insight3"],"bestPillar":"pillar_id","bestDay":"day_name","bestTime":"time","recommendations":["rec1","rec2","rec3"],"adjustments":{"increasePillars":["pillar_id"],"decreasePillars":["pillar_id"],"bestPostTypes":["type"]}}`;
 
 // ─── PILLAR IMAGE PROMPTS ───
+const BRAND_LAYOUT = " IMPORTANT LAYOUT: Keep the top 100px and bottom 80px very dark (#08080A) and minimal — brand elements will be overlaid there. Focus the main subject in the center 900px vertical area.";
 const IMAGE_PROMPT = {
-  showcase: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Premium Shopify theme product showcase. A sleek, modern website mockup displayed on a MacBook Pro and iPhone, floating at a slight angle on a deep dark background (#08080A). Electric Cyan (#00E5CC) soft glow emanating from the screens. Cinematic lighting from top-left, subtle depth of field. Clean, luxurious, tech-forward, minimal composition. Subject: "${title}". ${sub || ""}. Style: 3D render, photorealistic, professional product photography. No text, no watermarks, no logos, no UI elements with readable text.`,
-  beforeafter: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Dramatic split-screen comparison of two online stores. Left half: a dull, outdated, generic e-commerce site with washed-out colors, cluttered layout, grey tones, flat lighting. Right half: a stunning, premium, modern store design on dark background (#08080A) with Electric Cyan (#00E5CC) accent glow, clean typography, sharp product images. A glowing divider line separates the two halves. Cinematic contrast lighting. Subject: "${title}". ${sub || ""}. Style: digital art, high contrast, professional. No text, no watermarks, no readable words.`,
-  tips: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Clean, modern educational graphic. Abstract geometric shapes — circles, lines, grids — arranged in a minimal composition on a deep dark background (#08080A). Electric Cyan (#00E5CC) accent lines and glowing nodes connected by thin lines, suggesting a network or flowchart. Soft ambient lighting, slight bokeh in background. Subject: "${title}". ${sub || ""}. Style: minimal flat design with subtle 3D depth, professional infographic aesthetic. No text, no watermarks, no numbers, no readable words.`,
-  proof: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Social proof and trust visual. Five glowing star icons in Electric Cyan (#00E5CC) floating above a dark surface (#08080A). Subtle reflection below. Warm accent lighting from behind, creating a premium halo effect. Abstract graph or chart in the background showing upward growth trend with cyan glow. Subject: "${title}". ${sub || ""}. Style: 3D render, cinematic lighting, luxury brand aesthetic. No text, no watermarks, no faces, no readable words.`,
-  bts: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Developer workspace behind the scenes. A wide monitor displaying a dark-themed code editor with syntax-highlighted code (cyan, green, purple). Mechanical keyboard, ambient RGB lighting in Electric Cyan (#00E5CC). Dark room (#08080A background), moody cinematic lighting from the screen. Coffee cup nearby, minimal desk setup. Subject: "${title}". ${sub || ""}. Style: photorealistic, atmospheric, shallow depth of field. No text overlays, no watermarks, no readable code.`,
-  education: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Editorial, authoritative educational visual. Abstract data visualization — flowing lines, bar charts, or circular diagrams in Electric Cyan (#00E5CC) on deep dark background (#08080A). Clean geometric composition, magazine-style layout feel. Soft top-down lighting, subtle gradient from dark to slightly lighter at center. Subject: "${title}". ${sub || ""}. Style: modern editorial design, data-art aesthetic, premium and clean. No text, no watermarks, no readable labels.`,
+  showcase: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Premium Shopify theme product showcase. A sleek, modern website mockup displayed on a MacBook Pro and iPhone, floating at a slight angle on a deep dark background (#08080A). Electric Cyan (#00E5CC) soft glow emanating from the screens. Cinematic lighting from top-left, subtle depth of field. Clean, luxurious, tech-forward, minimal composition. Subject: "${title}". ${sub || ""}. Style: 3D render, photorealistic, professional product photography. No text, no watermarks, no logos, no UI elements with readable text.${BRAND_LAYOUT}`,
+  beforeafter: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Dramatic split-screen comparison of two online stores. Left half: a dull, outdated, generic e-commerce site with washed-out colors, cluttered layout, grey tones, flat lighting. Right half: a stunning, premium, modern store design on dark background (#08080A) with Electric Cyan (#00E5CC) accent glow, clean typography, sharp product images. A glowing divider line separates the two halves. Cinematic contrast lighting. Subject: "${title}". ${sub || ""}. Style: digital art, high contrast, professional. No text, no watermarks, no readable words.${BRAND_LAYOUT}`,
+  tips: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Clean, modern educational graphic. Abstract geometric shapes — circles, lines, grids — arranged in a minimal composition on a deep dark background (#08080A). Electric Cyan (#00E5CC) accent lines and glowing nodes connected by thin lines, suggesting a network or flowchart. Soft ambient lighting, slight bokeh in background. Subject: "${title}". ${sub || ""}. Style: minimal flat design with subtle 3D depth, professional infographic aesthetic. No text, no watermarks, no numbers, no readable words.${BRAND_LAYOUT}`,
+  proof: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Social proof and trust visual. Five glowing star icons in Electric Cyan (#00E5CC) floating above a dark surface (#08080A). Subtle reflection below. Warm accent lighting from behind, creating a premium halo effect. Abstract graph or chart in the background showing upward growth trend with cyan glow. Subject: "${title}". ${sub || ""}. Style: 3D render, cinematic lighting, luxury brand aesthetic. No text, no watermarks, no faces, no readable words.${BRAND_LAYOUT}`,
+  bts: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Developer workspace behind the scenes. A wide monitor displaying a dark-themed code editor with syntax-highlighted code (cyan, green, purple). Mechanical keyboard, ambient RGB lighting in Electric Cyan (#00E5CC). Dark room (#08080A background), moody cinematic lighting from the screen. Coffee cup nearby, minimal desk setup. Subject: "${title}". ${sub || ""}. Style: photorealistic, atmospheric, shallow depth of field. No text overlays, no watermarks, no readable code.${BRAND_LAYOUT}`,
+  education: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Editorial, authoritative educational visual. Abstract data visualization — flowing lines, bar charts, or circular diagrams in Electric Cyan (#00E5CC) on deep dark background (#08080A). Clean geometric composition, magazine-style layout feel. Soft top-down lighting, subtle gradient from dark to slightly lighter at center. Subject: "${title}". ${sub || ""}. Style: modern editorial design, data-art aesthetic, premium and clean. No text, no watermarks, no readable labels.${BRAND_LAYOUT}`,
 };
 
 // ─── DATE HELPERS ───
@@ -293,9 +294,36 @@ export default function ApexAutopilotV3() {
   const [insights, setInsights] = useState(null);
   const [genImages, setGenImages] = useState({});
   const [genImgLoading, setGenImgLoading] = useState({});
+  const [userAssets, setUserAssets] = useState({});
+  const [imageTab, setImageTab] = useState("template");
+  const [brandedPreview, setBrandedPreview] = useState(null);
   const [tab, setTab] = useState("all");
 
   const notify = useCallback((m, t = "ok") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
+  const uploadRef = useRef(null);
+
+  const compressImage = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1024;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) {
+          const ratio = Math.min(max / w, max / h);
+          w = Math.round(w * ratio); h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   // ─── AUTH ───
   useEffect(() => {
@@ -348,6 +376,7 @@ export default function ApexAutopilotV3() {
       try { const v = localStorage.getItem("apex3-perf"); if (v) setPerformance(JSON.parse(v)); } catch (e) {}
       try { const v = localStorage.getItem("apex3-insights"); if (v) setInsights(JSON.parse(v)); } catch (e) {}
       try { const v = localStorage.getItem("apex3-images"); if (v) setGenImages(JSON.parse(v)); } catch (e) {}
+      try { const v = localStorage.getItem("apex3-assets"); if (v) setUserAssets(JSON.parse(v)); } catch (e) {}
     })();
   }, []);
   useEffect(() => { try { if (posts.length) localStorage.setItem("apex3-posts", JSON.stringify(posts)); } catch (e) {} }, [posts]);
@@ -355,6 +384,20 @@ export default function ApexAutopilotV3() {
   useEffect(() => { try { if (performance.length) localStorage.setItem("apex3-perf", JSON.stringify(performance)); } catch (e) {} }, [performance]);
   useEffect(() => { try { if (insights) localStorage.setItem("apex3-insights", JSON.stringify(insights)); } catch (e) {} }, [insights]);
   useEffect(() => { try { if (Object.keys(genImages).length) localStorage.setItem("apex3-images", JSON.stringify(genImages)); } catch (e) {} }, [genImages]);
+  useEffect(() => { try { if (Object.keys(userAssets).length) localStorage.setItem("apex3-assets", JSON.stringify(userAssets)); } catch (e) {} }, [userAssets]);
+
+  // Auto-composite branded preview and set default tab when viewing a post
+  useEffect(() => {
+    if (!selected) { setBrandedPreview(null); return; }
+    if (genImages[selected.id]) {
+      setImageTab("branded");
+      compositeBrandedImage(selected).then(setBrandedPreview).catch(() => setBrandedPreview(null));
+    } else {
+      setImageTab("template");
+      setBrandedPreview(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, genImages[selected?.id]]);
 
   // ─── GEMINI API ───
   const apiHeaders = useCallback(() => ({
@@ -383,13 +426,21 @@ export default function ApexAutopilotV3() {
   const generateImage = async (postId, prompt) => {
     setGenImgLoading(p => ({ ...p, [postId]: true }));
     try {
+      const parts = [{ text: prompt }];
+      const asset = userAssets[postId];
+      if (asset) {
+        const [meta, data] = asset.split(",");
+        const mimeType = meta.match(/:(.*?);/)?.[1] || "image/jpeg";
+        parts.unshift({ text: "Incorporate this reference photo into the composition:" });
+        parts.splice(1, 0, { inlineData: { mimeType, data } });
+      }
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
           endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
           payload: {
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts }],
             generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
           }
         })
@@ -446,14 +497,21 @@ export default function ApexAutopilotV3() {
         setProgress({ cur: i * 2 + 1, tot: totalSteps, msg: `Generating image for ${day}...` });
         try {
           const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
+          const imgParts = [{ text: imgPromptFn(post.title, post.subtitle) }];
+          const asset = userAssets[post.id];
+          if (asset) {
+            const [meta, data] = asset.split(",");
+            const mimeType = meta.match(/:(.*?);/)?.[1] || "image/jpeg";
+            imgParts.unshift({ text: "Incorporate this reference photo into the composition:" });
+            imgParts.splice(1, 0, { inlineData: { mimeType, data } });
+          }
           const imgRes = await fetch("/api/gemini", {
             method: "POST",
             headers: apiHeaders(),
             body: JSON.stringify({
               endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
-
               payload: {
-                contents: [{ parts: [{ text: imgPromptFn(post.title, post.subtitle) }] }],
+                contents: [{ parts: imgParts }],
                 generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
               }
             })
@@ -502,6 +560,14 @@ export default function ApexAutopilotV3() {
 
       // Also regenerate image with pillar-specific prompt
       const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
+      const regenParts = [{ text: imgPromptFn(parsed.title, parsed.subtitle) }];
+      const regenAsset = userAssets[post.id];
+      if (regenAsset) {
+        const [meta, data] = regenAsset.split(",");
+        const mimeType = meta.match(/:(.*?);/)?.[1] || "image/jpeg";
+        regenParts.unshift({ text: "Incorporate this reference photo into the composition:" });
+        regenParts.splice(1, 0, { inlineData: { mimeType, data } });
+      }
       try {
         const imgRes = await fetch("/api/gemini", {
           method: "POST",
@@ -509,7 +575,7 @@ export default function ApexAutopilotV3() {
           body: JSON.stringify({
             endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
             payload: {
-              contents: [{ parts: [{ text: imgPromptFn(parsed.title, parsed.subtitle) }] }],
+              contents: [{ parts: regenParts }],
               generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
             }
           })
@@ -565,36 +631,119 @@ export default function ApexAutopilotV3() {
     notify("SVG downloaded!");
   };
 
-  const downloadAll = () => {
+  const downloadAIImage = (post) => {
+    const dataUrl = genImages[post.id];
+    if (!dataUrl) { notify("No AI image to download", "err"); return; }
+    const a = document.createElement("a"); a.href = dataUrl;
+    a.download = `apex-${post.pillar}-${post.day}-ai.png`; a.click();
+    notify("AI image downloaded!");
+  };
+
+  const brandOverlay = (accent, title, subtitle) => {
+    const tl = wrap(title || "", 28);
+    const escapeSvg = (str) => (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<defs>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Audiowide&amp;family=Outfit:wght@400;600;700&amp;display=swap');
+</style>
+<linearGradient id="topFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#08080A" stop-opacity="0.92"/><stop offset="100%" stop-color="#08080A" stop-opacity="0"/></linearGradient>
+<linearGradient id="botFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#08080A" stop-opacity="0"/><stop offset="100%" stop-color="#08080A" stop-opacity="0.95"/></linearGradient>
+<pattern id="og" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0L0 0 0 36" fill="none" stroke="rgba(255,255,255,0.015)" stroke-width="0.5"/></pattern>
+</defs>
+<rect width="1080" height="1080" fill="url(#og)" opacity="0.5"/>
+<rect y="0" width="1080" height="220" fill="url(#topFade)"/>
+<rect y="0" width="1080" height="3" fill="${accent}"/>
+<g transform="translate(38,28)">
+<path d="M5 42 L20 8 L27 22 L20 22 L34 22 L27 8 L42 42" fill="none" stroke="${accent}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<text x="92" y="58" font-family="'Audiowide',sans-serif" font-size="26" fill="#FFFFFF" letter-spacing="8">APEX</text>
+<text x="92" y="76" font-family="'Outfit',sans-serif" font-size="9" fill="rgba(255,255,255,0.25)" letter-spacing="4">PREMIUM THEMES</text>
+<text x="1032" y="58" font-family="'Outfit',sans-serif" font-size="12" fill="rgba(255,255,255,0.25)" text-anchor="end">@apexagency.xo</text>
+<rect y="750" width="1080" height="330" fill="url(#botFade)"/>
+${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sans-serif" font-size="38" font-weight="800" fill="#FFFFFF" letter-spacing="1">${escapeSvg(l)}</text>`).join("")}
+<text x="60" y="${870 + tl.length * 48 + 22}" font-family="'Outfit',sans-serif" font-size="16" fill="rgba(255,255,255,0.45)">${escapeSvg((subtitle || "").slice(0, 60))}</text>
+<rect y="1040" width="1080" height="40" fill="#101014"/>
+<g transform="translate(38,1046)">
+<path d="M3 24 L12 4 L16 13 L12 13 L20 13 L16 4 L25 24" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<text x="72" y="1065" font-family="'Audiowide',sans-serif" font-size="10" fill="rgba(255,255,255,0.3)" letter-spacing="3">APEX</text>
+<text x="142" y="1065" font-family="'Outfit',sans-serif" font-size="10" fill="rgba(255,255,255,0.2)">apexagencyxo.vercel.app</text>
+<text x="1032" y="1065" font-family="'Audiowide',sans-serif" font-size="10" fill="${accent}" text-anchor="end" letter-spacing="1.5">GET THE THEME →</text>
+<line x1="38" y1="1038" x2="170" y2="1038" stroke="${accent}" stroke-width="2" opacity="0.3"/>
+</svg>`;
+  };
+
+  const compositeBrandedImage = (post) => new Promise((resolve, reject) => {
+    const aiUrl = genImages[post.id];
+    if (!aiUrl) { reject(new Error("No AI image")); return; }
+    const pillar = PILLARS.find(p => p.id === post.pillar) || PILLARS[0];
+    const overlaySvg = brandOverlay(pillar.color, post.title, post.subtitle);
+
+    const aiImg = new Image();
+    aiImg.onload = () => {
+      const overlayImg = new Image();
+      overlayImg.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1080; canvas.height = 1080;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(aiImg, 0, 0, 1080, 1080);
+        ctx.drawImage(overlayImg, 0, 0, 1080, 1080);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      overlayImg.onerror = reject;
+      overlayImg.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(overlaySvg);
+    };
+    aiImg.onerror = reject;
+    aiImg.src = aiUrl;
+  });
+
+  const downloadBrandedImage = async (post) => {
+    try {
+      const dataUrl = await compositeBrandedImage(post);
+      const a = document.createElement("a"); a.href = dataUrl;
+      a.download = `apex-${post.pillar}-${post.day}-branded.png`; a.click();
+      notify("Branded image downloaded!");
+    } catch { notify("Failed to composite branded image", "err"); }
+  };
+
+  const downloadAll = async () => {
     const approved = posts.filter(p => p.status === "approved" || p.status === "draft");
     if (approved.length === 0) { notify("No posts to download", "err"); return; }
-    let delay = 0;
-    approved.forEach((post, i) => {
-      setTimeout(() => {
-        // Download SVG template
-        const svgBlob = new Blob([getSVG(post)], { type: "image/svg+xml" });
-        const svgA = document.createElement("a"); svgA.href = URL.createObjectURL(svgBlob);
-        svgA.download = `apex-${String(i+1).padStart(2,"0")}-${post.day}-${post.pillar}.svg`; svgA.click();
-        
-        // If AI image exists, download that too
-        if (genImages[post.id]) {
-          setTimeout(() => {
-            const imgA = document.createElement("a"); imgA.href = genImages[post.id];
-            imgA.download = `apex-${String(i+1).padStart(2,"0")}-${post.day}-${post.pillar}-ai.png`; imgA.click();
-          }, 300);
-        }
+    notify(`Downloading ${approved.length} posts (branded images + captions)...`);
 
-        // Download caption as text file
-        setTimeout(() => {
-          const captionText = `${post.caption}\n\n${post.hashtags}`;
-          const txtBlob = new Blob([captionText], { type: "text/plain" });
-          const txtA = document.createElement("a"); txtA.href = URL.createObjectURL(txtBlob);
-          txtA.download = `apex-${String(i+1).padStart(2,"0")}-${post.day}-${post.pillar}-caption.txt`; txtA.click();
-        }, 600);
-      }, delay);
-      delay += 1000; // stagger downloads to not overwhelm browser
-    });
-    notify(`Downloading ${approved.length} posts (SVGs + captions + AI images)...`);
+    for (let i = 0; i < approved.length; i++) {
+      const post = approved[i];
+      const prefix = `apex-${String(i+1).padStart(2,"0")}-${post.day}-${post.pillar}`;
+
+      // Download branded composite if AI image exists, otherwise SVG
+      if (genImages[post.id]) {
+        try {
+          const branded = await compositeBrandedImage(post);
+          const a = document.createElement("a"); a.href = branded;
+          a.download = `${prefix}-branded.png`; a.click();
+        } catch {
+          // Fall back to raw AI image
+          const a = document.createElement("a"); a.href = genImages[post.id];
+          a.download = `${prefix}-ai.png`; a.click();
+        }
+      } else {
+        const svgBlob = new Blob([getSVG(post)], { type: "image/svg+xml" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(svgBlob);
+        a.download = `${prefix}.svg`; a.click();
+      }
+
+      // Download caption
+      await new Promise(r => setTimeout(r, 400));
+      const captionText = `${post.caption}\n\n${post.hashtags}`;
+      const txtBlob = new Blob([captionText], { type: "text/plain" });
+      const txtA = document.createElement("a"); txtA.href = URL.createObjectURL(txtBlob);
+      txtA.download = `${prefix}-caption.txt`; txtA.click();
+
+      // Stagger between posts
+      if (i < approved.length - 1) await new Promise(r => setTimeout(r, 800));
+    }
+    notify("All downloads complete!");
   };
 
   const stats = {
@@ -1085,28 +1234,81 @@ export default function ApexAutopilotV3() {
             {selected.needsAsset && (
               <div style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)", padding: 10, marginBottom: 12 }}>
                 <p style={{ fontSize: 9, fontWeight: 600, color: "#F97316", letterSpacing: "1.5px", margin: "0 0 4px" }}>📎 NEEDS YOUR INPUT</p>
-                <p style={{ fontSize: 11, color: s.t2, margin: 0 }}>{selected.assetRequest || "This post would benefit from a real screenshot or photo from you."}</p>
+                <p style={{ fontSize: 11, color: s.t2, margin: "0 0 8px" }}>{selected.assetRequest || "This post would benefit from a real screenshot or photo from you."}</p>
+                {userAssets[selected.id] ? (
+                  <div>
+                    <img src={userAssets[selected.id]} alt="Uploaded asset" style={{ width: "100%", border: `1px solid ${s.border}`, marginBottom: 6 }} />
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <Btn small onClick={() => { setUserAssets(p => { const n = { ...p }; delete n[selected.id]; return n; }); }} danger style={{ flex: 1 }}>Remove</Btn>
+                      <Btn small onClick={() => { const fn = IMAGE_PROMPT[selected.pillar] || IMAGE_PROMPT.showcase; generateImage(selected.id, fn(selected.title, selected.subtitle)); }} disabled={genImgLoading[selected.id] || !hasKey} style={{ flex: 1, color: s.accent, borderColor: "rgba(0,229,204,0.2)" }}>
+                        {genImgLoading[selected.id] ? "Generating..." : "✦ Regenerate with Asset"}
+                      </Btn>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input ref={uploadRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const compressed = await compressImage(file);
+                        setUserAssets(p => ({ ...p, [selected.id]: compressed }));
+                        notify("Asset uploaded! Regenerate to incorporate it.");
+                      } catch { notify("Failed to process image", "err"); }
+                      e.target.value = "";
+                    }} />
+                    <Btn small onClick={() => uploadRef.current?.click()} style={{ width: "100%", color: "#F97316", borderColor: "rgba(249,115,22,0.2)" }}>
+                      📁 Upload Screenshot / Photo
+                    </Btn>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* SVG Preview */}
+            {/* Image Preview Tabs */}
             <div style={{ marginBottom: 12 }}>
-              <div dangerouslySetInnerHTML={{ __html: getSVG(selected) }} style={{ width: "100%", border: `1px solid ${s.border}` }} />
+              <div style={{ display: "flex", gap: 2, marginBottom: 6 }}>
+                {[
+                  { id: "template", l: "SVG Template" },
+                  ...(genImages[selected.id] ? [{ id: "ai", l: "AI Image" }, { id: "branded", l: "Branded" }] : [])
+                ].map(t => (
+                  <button key={t.id} onClick={() => setImageTab(t.id)} style={{
+                    padding: "4px 10px", fontSize: 9, fontWeight: 600, letterSpacing: "0.5px", cursor: "pointer",
+                    border: imageTab === t.id ? `1px solid ${s.accent}` : `1px solid ${s.border}`,
+                    background: imageTab === t.id ? "rgba(0,229,204,0.08)" : "transparent",
+                    color: imageTab === t.id ? s.accent : s.t3, fontFamily: "Outfit"
+                  }}>{t.l}</button>
+                ))}
+              </div>
+
+              {imageTab === "template" && (
+                <div dangerouslySetInnerHTML={{ __html: getSVG(selected) }} style={{ width: "100%", border: `1px solid ${s.border}` }} />
+              )}
+              {imageTab === "ai" && genImages[selected.id] && (
+                <img src={genImages[selected.id]} alt="" style={{ width: "100%", border: `1px solid ${s.border}` }} />
+              )}
+              {imageTab === "branded" && brandedPreview && (
+                <img src={brandedPreview} alt="" style={{ width: "100%", border: `1px solid ${s.border}` }} />
+              )}
+              {imageTab === "branded" && !brandedPreview && genImages[selected.id] && (
+                <div style={{ padding: 20, textAlign: "center", border: `1px solid ${s.border}`, background: s.surface }}>
+                  <p style={{ fontSize: 10, color: s.t3 }}>Compositing branded preview...</p>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                <Btn small onClick={() => downloadSVG(selected)} style={{ flex: 1 }}>↓ Download SVG</Btn>
+                <Btn small onClick={() => {
+                  if (imageTab === "branded" && brandedPreview) downloadBrandedImage(selected);
+                  else if (imageTab === "ai" && genImages[selected.id]) downloadAIImage(selected);
+                  else downloadSVG(selected);
+                }} style={{ flex: 1, color: "#60A5FA", borderColor: "rgba(96,165,250,0.2)" }}>
+                  ↓ {imageTab === "branded" ? "Download Branded" : imageTab === "ai" ? "Download AI Image" : "Download SVG"}
+                </Btn>
                 <Btn small onClick={() => { const fn = IMAGE_PROMPT[selected.pillar] || IMAGE_PROMPT.showcase; generateImage(selected.id, fn(selected.title, selected.subtitle)); }} disabled={genImgLoading[selected.id] || !hasKey} style={{ flex: 1, color: s.accent, borderColor: "rgba(0,229,204,0.2)" }}>
-                  {genImgLoading[selected.id] ? "Generating..." : "✦ AI Image"}
+                  {genImgLoading[selected.id] ? "Generating..." : "✦ Generate AI Image"}
                 </Btn>
               </div>
             </div>
-
-            {/* AI Generated Image */}
-            {genImages[selected.id] && (
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 9, color: s.t3, letterSpacing: "1.5px", margin: "0 0 4px" }}>GEMINI 3.1 FLASH IMAGE</p>
-                <img src={genImages[selected.id]} alt="" style={{ width: "100%", border: `1px solid ${s.border}` }} />
-              </div>
-            )}
 
             {/* Caption */}
             <div style={{ marginBottom: 10 }}>
@@ -1150,8 +1352,8 @@ export default function ApexAutopilotV3() {
                 </Btn>
               )}
               {selected.status === "approved" && (
-                <Btn onClick={() => downloadSVG(selected)} style={{ width: "100%", color: "#60A5FA", borderColor: "rgba(96,165,250,0.2)" }}>
-                  ↓ DOWNLOAD FOR POSTING
+                <Btn onClick={() => genImages[selected.id] ? downloadBrandedImage(selected) : downloadSVG(selected)} style={{ width: "100%", color: "#60A5FA", borderColor: "rgba(96,165,250,0.2)" }}>
+                  {genImages[selected.id] ? "↓ DOWNLOAD BRANDED IMAGE" : "↓ DOWNLOAD SVG"}
                 </Btn>
               )}
               <Btn onClick={() => regeneratePost(selected)} disabled={regenLoading === selected.id || !hasKey} style={{ width: "100%", color: "#A78BFA", borderColor: "rgba(167,139,250,0.2)" }}>
