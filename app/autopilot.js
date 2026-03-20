@@ -62,8 +62,8 @@ const brandFrame = (accent, inner) => `<svg xmlns="http://www.w3.org/2000/svg" v
 <path d="M5 42 L20 8 L27 22 L20 22 L34 22 L27 8 L42 42" fill="none" stroke="${accent}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 </g>
 <text x="92" y="58" font-family="'Audiowide',sans-serif" font-size="26" fill="#FFFFFF" letter-spacing="8">APEX</text>
-<text x="92" y="76" font-family="'Outfit',sans-serif" font-size="9" fill="rgba(255,255,255,0.25)" letter-spacing="4">PREMIUM THEMES</text>
-<text x="1032" y="58" font-family="'Outfit',sans-serif" font-size="12" fill="rgba(255,255,255,0.25)" text-anchor="end">@apexagency.xo</text>
+<text x="92" y="76" font-family="'Outfit',sans-serif" font-size="9" fill="rgba(255,255,255,0.6)" letter-spacing="4">PREMIUM THEMES</text>
+<text x="1032" y="58" font-family="'Outfit',sans-serif" font-size="12" fill="rgba(255,255,255,0.5)" text-anchor="end">@apexagency.xo</text>
 ${inner}
 <rect y="1040" width="1080" height="40" fill="#101014"/>
 <g transform="translate(38,1046)">
@@ -218,6 +218,7 @@ ${BRAND.knowledge}
 BRAND VOICE: ${BRAND.voice}
 
 Create 1 Instagram ${type} for "${pillar.name}" pillar: ${pillar.desc}
+INSTAGRAM VISUAL STRATEGY: Posts must stop the scroll instantly. Bold electric cyan (#00E5CC) is the hero color — used prominently, not subtly. Deep navy-to-black gradients as backgrounds (not flat black). Single clear focal point per image. Compositions that read perfectly as a 150px thumbnail.
 ${insightsData ? `
 PERFORMANCE INSIGHTS FROM PREVIOUS POSTS — use these to improve this post:
 - Best performing pillar: ${insightsData.bestPillar || "unknown"}
@@ -238,7 +239,11 @@ INSTAGRAM CAPTION RULES:
 Return ONLY valid JSON:
 {"title":"Punchy headline for post image (max 8 words)","subtitle":"Supporting subline (max 15 words)","caption":"Full Instagram caption following the rules above. Use \\n\\n for line breaks between paragraphs.","hashtags":"Generate 20-25 relevant hashtags. Mix high-volume (#Shopify #Ecommerce #OnlineStore) with niche (#ShopifyTheme #APEXTheme #ConversionRate #ShopifyDesign). Always include #APEXTheme. Vary hashtags per post — NEVER repeat the exact same set.","bestTime":"e.g. 10:00 AM EST","needsAsset":false,"assetRequest":""}
 
-If this post would genuinely benefit from a real screenshot, photo, or custom asset from the brand owner, set needsAsset=true and describe what's needed in assetRequest.`;
+CRITICAL RULES FOR needsAsset:
+- Set needsAsset=true ONLY when the post is IMPOSSIBLE without a specific static photo you cannot AI-generate — for example: a screenshot of a REAL customer's live store URL, or a photo of a specific physical product.
+- AI can generate: device mockups, workspaces, abstract visuals, charts, geometric art, stars, gradients, product photography. These never need needsAsset=true.
+- NEVER request video, footage, screen recordings, animations, clips, or reels as an asset — this tool only handles static images. If the post type is Reel or Story, the static thumbnail image is all that is needed.
+- Default is needsAsset=false. Only flip to true in rare, genuine cases where a real static photo is the only option.`;
 
 const LEARN_PROMPT = (perfData) => `You are analyzing Instagram performance for APEX (@apexagency.xo), a Shopify theme brand.
 
@@ -249,14 +254,22 @@ Analyze patterns and return ONLY valid JSON:
 {"insights":["insight1","insight2","insight3"],"bestPillar":"pillar_id","bestDay":"day_name","bestTime":"time","recommendations":["rec1","rec2","rec3"],"adjustments":{"increasePillars":["pillar_id"],"decreasePillars":["pillar_id"],"bestPostTypes":["type"]}}`;
 
 // ─── PILLAR IMAGE PROMPTS ───
-const BRAND_LAYOUT = " IMPORTANT LAYOUT: Keep the top 100px and bottom 80px very dark (#08080A) and minimal — brand elements will be overlaid there. Focus the main subject in the center 900px vertical area.";
+// Instagram-native visual identity: bold electric teal (#00E5CC) as hero color, deep navy-to-black
+// gradients, clean single-focal-point compositions, thumb-stopping at 0.3s scroll speed.
+// NOT the website's glassmorphism — this is Instagram-first, feed-dominant, high contrast.
+const BRAND_LAYOUT = " CRITICAL LAYOUT RULE: Top 120px and bottom 100px must stay dark and empty — brand text overlays there. All focal points must stay in the middle 860px vertical zone.";
 const IMAGE_PROMPT = {
-  showcase: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Premium Shopify theme product showcase. A sleek, modern website mockup displayed on a MacBook Pro and iPhone, floating at a slight angle on a deep dark background (#08080A). Electric Cyan (#00E5CC) soft glow emanating from the screens. Cinematic lighting from top-left, subtle depth of field. Clean, luxurious, tech-forward, minimal composition. Subject: "${title}". ${sub || ""}. Style: 3D render, photorealistic, professional product photography. No text, no watermarks, no logos, no UI elements with readable text.${BRAND_LAYOUT}`,
-  beforeafter: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Dramatic split-screen comparison of two online stores. Left half: a dull, outdated, generic e-commerce site with washed-out colors, cluttered layout, grey tones, flat lighting. Right half: a stunning, premium, modern store design on dark background (#08080A) with Electric Cyan (#00E5CC) accent glow, clean typography, sharp product images. A glowing divider line separates the two halves. Cinematic contrast lighting. Subject: "${title}". ${sub || ""}. Style: digital art, high contrast, professional. No text, no watermarks, no readable words.${BRAND_LAYOUT}`,
-  tips: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Clean, modern educational graphic. Abstract geometric shapes — circles, lines, grids — arranged in a minimal composition on a deep dark background (#08080A). Electric Cyan (#00E5CC) accent lines and glowing nodes connected by thin lines, suggesting a network or flowchart. Soft ambient lighting, slight bokeh in background. Subject: "${title}". ${sub || ""}. Style: minimal flat design with subtle 3D depth, professional infographic aesthetic. No text, no watermarks, no numbers, no readable words.${BRAND_LAYOUT}`,
-  proof: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Social proof and trust visual. Five glowing star icons in Electric Cyan (#00E5CC) floating above a dark surface (#08080A). Subtle reflection below. Warm accent lighting from behind, creating a premium halo effect. Abstract graph or chart in the background showing upward growth trend with cyan glow. Subject: "${title}". ${sub || ""}. Style: 3D render, cinematic lighting, luxury brand aesthetic. No text, no watermarks, no faces, no readable words.${BRAND_LAYOUT}`,
-  bts: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Developer workspace behind the scenes. A wide monitor displaying a dark-themed code editor with syntax-highlighted code (cyan, green, purple). Mechanical keyboard, ambient RGB lighting in Electric Cyan (#00E5CC). Dark room (#08080A background), moody cinematic lighting from the screen. Coffee cup nearby, minimal desk setup. Subject: "${title}". ${sub || ""}. Style: photorealistic, atmospheric, shallow depth of field. No text overlays, no watermarks, no readable code.${BRAND_LAYOUT}`,
-  education: (title, sub) => `Generate a 1080x1080 pixel Instagram post image. Editorial, authoritative educational visual. Abstract data visualization — flowing lines, bar charts, or circular diagrams in Electric Cyan (#00E5CC) on deep dark background (#08080A). Clean geometric composition, magazine-style layout feel. Soft top-down lighting, subtle gradient from dark to slightly lighter at center. Subject: "${title}". ${sub || ""}. Style: modern editorial design, data-art aesthetic, premium and clean. No text, no watermarks, no readable labels.${BRAND_LAYOUT}`,
+  showcase: (title, sub) => `Stunning product reveal Instagram image, square 1:1, premium digital art quality. A single iPhone 15 Pro and MacBook Pro float centered against a rich deep background that graduates from pure black at the corners to a deep midnight navy (#0D1B2A) at the center. The device screens face the viewer, displaying a sleek dark e-commerce Shopify store layout — dark background, clean product grid, generous white space — no readable text. A single dramatic beam of electric cyan (#00E5CC) light rises from directly below the devices, washing them in a bold teal glow that fades upward into the navy background. The device frames have a premium dark titanium finish. Below each device: a sharp, clean cyan reflection on an invisible glass floor. The composition is centered, symmetrical, commanding. Mood: Apple product reveal meets luxury Shopify brand launch. Bold, immediate, stops the scroll. No text, no watermarks.${BRAND_LAYOUT}`,
+
+  beforeafter: (title, sub) => `Bold Instagram before/after comparison graphic, square 1:1, high-impact visual design. The image is divided diagonally — a thick glowing electric cyan (#00E5CC) diagonal line runs from bottom-left to top-right, dividing the frame into two triangular halves. BOTTOM-LEFT TRIANGLE (before): a flat, dull, overcrowded Shopify storefront on white background — gray palette, cluttered layout, weak product images, lifeless. UPPER-RIGHT TRIANGLE (after): a stunning premium dark Shopify store — near-black background, bold product photography, clean minimal layout, electric cyan accents, aspirational and premium. The diagonal dividing line glows brightly in cyan — the single most eye-catching element. Background bleeds to very dark navy at edges. Mood: dramatic transformation, instant contrast, irresistible scroll-stop. Style: bold graphic design, high contrast, punchy. No text, no watermarks.${BRAND_LAYOUT}`,
+
+  tips: (title, sub) => `Bold graphic design Instagram post, square 1:1, premium visual identity. Central composition: one large perfect circle (4px stroke, electric cyan #00E5CC) centered on a rich gradient background fading from near-black (#0A0A0A) at the top to deep dark navy at the bottom. Inside the circle: three minimal white line-art icons arranged in a clean triangle — an upward arrow at top, a lightning bolt at bottom-left, a shopping bag at bottom-right. Each icon has a very faint cyan glow. Outside the circle: four small diamond accent marks in cyan at north, south, east, west positions on the circle's edge. The background has an extremely subtle grid of white hairlines at 4% opacity. The composition is bold, geometric, confident — reads perfectly at thumbnail size. Style: premium SaaS brand design, modern, graphic, strong visual identity. No text, no words, no numbers, no watermarks.${BRAND_LAYOUT}`,
+
+  proof: (title, sub) => `High-energy results visual for Instagram, square 1:1, premium brand graphic. A bold upward-trending chart curve dominates the image — a thick 4px electric cyan (#00E5CC) line with a strong cyan glow trail beneath it, rising steeply from the left edge to the upper right, plotted on an ultra-minimal dark grid. Background: deep gradient from pure black at top to dark teal (#003D35) at the bottom — rich, deep, premium. Below the chart line: the area is filled with a very subtle cyan-to-transparent gradient wash. In the lower third: three bold abstract geometric shapes side by side — a large upward arrow, a bold plus sign, a five-point star — all in solid electric cyan, clean and iconic. The overall image screams growth, results, and winning. Mood: triumphant, energetic, premium. No text, no numbers, no readable content.${BRAND_LAYOUT}`,
+
+  bts: (title, sub) => `Cinematic developer workspace Instagram photo, square 1:1, photorealistic editorial quality. A large ultrawide monitor sits on a clean dark desk, angled slightly left, displaying a dark code editor with vibrant colorful syntax highlighting — electric cyan, purple, white, green rhythms — no readable code. An LED strip hidden behind the monitor creates a dramatic electric cyan (#00E5CC) halo that floods the dark room with teal light, washing the desk surface and keyboard in cool cyan shadows. A dark aluminum mechanical keyboard sits sharp in the immediate foreground. Everything outside the monitor glow falls into deep cinematic shadow. Composition: low angle, keyboard razor-sharp in foreground, monitor softly glowing behind. Depth of field: f/1.4 equivalent. Color grade: crushed blacks, cyan as the only strong color, deep shadows. Mood: late-night flow state, premium craft, technical mastery. No readable text, no watermarks.${BRAND_LAYOUT}`,
+
+  education: (title, sub) => `Premium editorial graphic for Instagram, square 1:1, bold and intelligent design. A clean dark graphic with a rich gradient background: pure near-black (#0A0A0A) at the top fading to a deep dark teal (#002B25) at the bottom. The hero element: a bold upward arrow rendered as a thick geometric shape in solid electric cyan (#00E5CC) with a strong glow, centered and large — taking up 40% of the frame height. Behind it: a minimal isometric grid of white hairlines at 6% opacity suggesting depth and precision. Flanking the arrow: two thin vertical cyan lines that taper from bright at the bottom to invisible at the top. The corner areas fade to pure black. The composition is bold, graphic, immediately readable at thumbnail size — communicates growth and intelligence in one glance. Style: bold brand design meets premium editorial. No text, no numbers, no labels, no watermarks.${BRAND_LAYOUT}`,
 };
 
 // ─── DATE HELPERS ───
@@ -493,9 +506,9 @@ export default function ApexAutopilotV3() {
         }
         newPosts.push(post);
 
-        // Auto-generate AI image with pillar-specific prompt
-        setProgress({ cur: i * 2 + 1, tot: totalSteps, msg: `Generating image for ${day}...` });
-        try {
+        // Auto-generate AI image only if no user asset is needed
+        setProgress({ cur: i * 2 + 1, tot: totalSteps, msg: post.needsAsset ? `Skipping image for ${day} — needs your input first` : `Generating image for ${day}...` });
+        if (!post.needsAsset) try {
           const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
           const imgParts = [{ text: imgPromptFn(post.title, post.subtitle) }];
           const asset = userAssets[post.id];
@@ -558,8 +571,8 @@ export default function ApexAutopilotV3() {
       setSelected(updated);
       setEditCaption(parsed.caption);
 
-      // Also regenerate image with pillar-specific prompt
-      const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
+      // Also regenerate image — skip if post still needs a user asset
+      if (!updated.needsAsset) { const imgPromptFn = IMAGE_PROMPT[pillar.id] || IMAGE_PROMPT.showcase;
       const regenParts = [{ text: imgPromptFn(parsed.title, parsed.subtitle) }];
       const regenAsset = userAssets[post.id];
       if (regenAsset) {
@@ -587,7 +600,7 @@ export default function ApexAutopilotV3() {
             setGenImages(prev => ({ ...prev, [post.id]: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}` }));
           }
         }
-      } catch (imgErr) {}
+      } catch (imgErr) {} }
       notify("Post regenerated with new caption + image!");
     } catch (err) { notify(err.message, "err"); }
     finally { setRegenLoading(null); }
@@ -658,8 +671,8 @@ export default function ApexAutopilotV3() {
 <path d="M5 42 L20 8 L27 22 L20 22 L34 22 L27 8 L42 42" fill="none" stroke="${accent}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 </g>
 <text x="92" y="58" font-family="'Audiowide',sans-serif" font-size="26" fill="#FFFFFF" letter-spacing="8">APEX</text>
-<text x="92" y="76" font-family="'Outfit',sans-serif" font-size="9" fill="rgba(255,255,255,0.25)" letter-spacing="4">PREMIUM THEMES</text>
-<text x="1032" y="58" font-family="'Outfit',sans-serif" font-size="12" fill="rgba(255,255,255,0.25)" text-anchor="end">@apexagency.xo</text>
+<text x="92" y="76" font-family="'Outfit',sans-serif" font-size="9" fill="rgba(255,255,255,0.6)" letter-spacing="4">PREMIUM THEMES</text>
+<text x="1032" y="58" font-family="'Outfit',sans-serif" font-size="12" fill="rgba(255,255,255,0.5)" text-anchor="end">@apexagency.xo</text>
 <rect y="750" width="1080" height="330" fill="url(#botFade)"/>
 ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sans-serif" font-size="38" font-weight="800" fill="#FFFFFF" letter-spacing="1">${escapeSvg(l)}</text>`).join("")}
 <text x="60" y="${870 + tl.length * 48 + 22}" font-family="'Outfit',sans-serif" font-size="16" fill="rgba(255,255,255,0.45)">${escapeSvg((subtitle || "").slice(0, 60))}</text>
@@ -794,7 +807,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
       scheduled: { bg: "rgba(96,165,250,0.1)", c: "#60A5FA" },
       published: { bg: "rgba(52,211,153,0.1)", c: "#34D399" },
     }[status] || { bg: "rgba(255,255,255,0.04)", c: s.t3 };
-    return <span style={{ padding: "3px 8px", fontSize: 10, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", background: m.bg, color: m.c, fontFamily: "'Outfit', sans-serif" }}>{status === "needs-asset" ? "NEEDS INPUT" : status}</span>;
+    return <span style={{ padding: "3px 8px", fontSize: 10, fontWeight: 600, letterSpacing: "0.5px", background: m.bg, color: m.c, fontFamily: "'Outfit', sans-serif", direction: status === "needs-asset" ? "rtl" : "ltr" }}>{status === "needs-asset" ? "يحتاج مدخلات" : status.toUpperCase()}</span>;
   };
 
   // ════════════════════════════════════════
@@ -910,7 +923,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
             <div style={{ background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.1)`, padding: 14, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: s.accent, margin: "0 0 2px", fontFamily: "Audiowide" }}>
-                  {!hasKey ? "⚠ Set GEMINI_API_KEY in Vercel env vars" : stats.needsAsset > 0 ? `${stats.needsAsset} post${stats.needsAsset > 1 ? "s" : ""} need your input` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
+                  {!hasKey ? "⚠ Set GEMINI_API_KEY in Vercel env vars" : stats.needsAsset > 0 ? `${stats.needsAsset} منشور يحتاج مدخلاتك` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
                 </p>
                 <p style={{ fontSize: 10, color: s.t3, margin: 0 }}>
                   {hasKey ? "API key configured on server — secure and ready" : "Vercel Dashboard → Settings → Environment Variables"}
@@ -941,7 +954,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
 
             {/* Filter tabs */}
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-              {[{ id: "all", l: `All (${stats.total})` }, { id: "needs-asset", l: `Needs Input (${stats.needsAsset})` }, { id: "draft", l: `Drafts (${stats.drafts})` }, { id: "approved", l: `Approved (${stats.approved})` }].map(t => (
+              {[{ id: "all", l: `All (${stats.total})` }, { id: "needs-asset", l: `يحتاج مدخلات (${stats.needsAsset})` }, { id: "draft", l: `Drafts (${stats.drafts})` }, { id: "approved", l: `Approved (${stats.approved})` }].map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)} style={{
                   padding: "5px 10px", fontSize: 10, border: tab === t.id ? `1px solid rgba(0,229,204,0.3)` : `1px solid ${s.border}`,
                   background: tab === t.id ? "rgba(0,229,204,0.06)" : "transparent",
@@ -1074,7 +1087,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
             <div style={{ marginBottom: 18 }}>
               <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, letterSpacing: "1.5px", margin: "0 0 8px" }}>POSTS PER WEEK</p>
               <div style={{ display: "flex", gap: 5 }}>
-                {[3, 5, 7].map(n => (
+                {[1, 3, 5, 7].map(n => (
                   <button key={n} onClick={() => setSettings(p => ({ ...p, postsPerWeek: n }))} style={{
                     padding: "10px 26px", fontSize: 14, fontWeight: 700, fontFamily: "Audiowide", cursor: "pointer",
                     border: settings.postsPerWeek === n ? `1px solid ${s.accent}` : `1px solid ${s.border}`,
@@ -1095,7 +1108,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
             )}
 
             <Btn primary onClick={generateWeek} disabled={generating || !hasKey} style={{ width: "100%", padding: "14px" }}>
-              {generating ? `GENERATING... ${progress.cur}/${progress.tot}` : `▲ GENERATE ${settings.postsPerWeek} BRANDED POSTS`}
+              {generating ? `GENERATING... ${progress.cur}/${progress.tot}` : `▲ GENERATE ${settings.postsPerWeek} BRANDED POST${settings.postsPerWeek === 1 ? "" : "S"}`}
             </Btn>
 
             {generating && <div style={{ marginTop: 10 }}>
@@ -1233,7 +1246,7 @@ ${tl.map((l, i) => `<text x="60" y="${870 + i * 48}" font-family="'Audiowide',sa
             {/* Asset Request */}
             {selected.needsAsset && (
               <div style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)", padding: 10, marginBottom: 12 }}>
-                <p style={{ fontSize: 9, fontWeight: 600, color: "#F97316", letterSpacing: "1.5px", margin: "0 0 4px" }}>📎 NEEDS YOUR INPUT</p>
+                <p style={{ fontSize: 9, fontWeight: 600, color: "#F97316", letterSpacing: "1.5px", margin: "0 0 4px", direction: "rtl" }}>📎 يحتاج مدخلاتك</p>
                 <p style={{ fontSize: 11, color: s.t2, margin: "0 0 8px" }}>{selected.assetRequest || "This post would benefit from a real screenshot or photo from you."}</p>
                 {userAssets[selected.id] ? (
                   <div>
