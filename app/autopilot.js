@@ -917,10 +917,17 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
 
     const aiImg = new Image();
     aiImg.onload = () => {
-      // Detect actual AI image dimensions — supports 1:1 and 4:5
+      // Enforce Instagram-safe dimensions: 1080x1080 (1:1) or 1080x1350 (4:5 max)
       const w = 1080;
-      const h = aiImg.height > aiImg.width ? Math.round(1080 * (aiImg.height / aiImg.width)) : 1080;
-      const canvasH = Math.max(h, 1080);
+      const srcRatio = aiImg.height / aiImg.width;
+      const canvasH = srcRatio > 1 ? Math.min(Math.round(1080 * srcRatio), 1350) : 1080;
+
+      // Center-crop source image if it's taller than 4:5
+      const scaledW = aiImg.width;
+      const scaledH = Math.round(aiImg.width * (canvasH / w));
+      const srcX = 0;
+      const srcY = Math.max(0, Math.round((aiImg.height - scaledH) / 2));
+
       const overlaySvg = brandOverlay(pillar.color, post.title, post.subtitle, canvasH);
 
       const overlayImg = new Image();
@@ -928,7 +935,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = canvasH;
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(aiImg, 0, 0, w, canvasH);
+        ctx.drawImage(aiImg, srcX, srcY, scaledW, scaledH, 0, 0, w, canvasH);
         ctx.drawImage(overlayImg, 0, 0, w, canvasH);
         resolve(canvas.toDataURL("image/png"));
       };
