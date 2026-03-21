@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // ════════════════════════════════════════════════════════════════
 // APEX AUTOPILOT V3 — Final Production Build
-// Brain: Gemini 3.1 Pro | Images: Gemini 3.1 Flash Image
+// Brain: Gemini 3.1 Flash | Images: Gemini 3.1 Flash Image
 // ════════════════════════════════════════════════════════════════
 
 // ─── BRAND SYSTEM ───
@@ -449,7 +449,7 @@ const CAROUSEL_SLIDE_SVG = (slideNum, totalSlides, headline, accent) => {
 <line x1="80" y1="545" x2="160" y2="545" stroke="${accent}" stroke-width="3"/>
 ${tl.map((l, i) => `<text x="80" y="${640 + i * 65}" font-family="'Audiowide',sans-serif" font-size="52" font-weight="800" fill="#FFF">${l}</text>`).join("")}
 ${slideNum === totalSlides ? `<rect x="80" y="${640 + tl.length * 65 + 40}" width="260" height="56" fill="${accent}"/>
-<text x="210" y="${640 + tl.length * 65 + 75}" font-family="'Audiowide',sans-serif" font-size="14" font-weight="700" fill="#08080A" text-anchor="middle" letter-spacing="2">GET THE THEME &rarr;</text>` : ""}
+<text x="210" y="${640 + tl.length * 65 + 75}" font-family="'Audiowide',sans-serif" font-size="14" font-weight="700" fill="#08080A" text-anchor="middle" letter-spacing="2">GET THE THEME &#x2192;</text>` : ""}
 <rect y="1310" width="1080" height="40" fill="#101014"/>
 <text x="540" y="1336" font-family="'Outfit',sans-serif" font-size="10" fill="rgba(255,255,255,0.2)" text-anchor="middle">@apexagency.xo &middot; apexagencyxo.vercel.app</text>
 ${Array.from({length: totalSlides}, (_, k) => `<rect x="${540 - (totalSlides * 12) + k * 24}" y="1280" width="${k === slideNum - 1 ? 20 : 8}" height="4" rx="2" fill="${k === slideNum - 1 ? accent : 'rgba(255,255,255,0.15)'}"/>`).join("\n")}
@@ -460,8 +460,9 @@ ${Array.from({length: totalSlides}, (_, k) => `<rect x="${540 - (totalSlides * 1
 const getWeekDates = () => {
   const today = new Date();
   const monday = new Date(today);
-  const dayOfWeek = today.getDay();
-  monday.setDate(today.getDate() + (dayOfWeek === 0 ? 1 : 8 - dayOfWeek));
+  const dow = today.getDay(); // 0=Sun,1=Mon,...
+  const offset = dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow; // next Monday, or today if Monday
+  monday.setDate(today.getDate() + offset);
   return DAYS.map((_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -494,9 +495,25 @@ export default function ApexAutopilotV3() {
   const [userAssets, setUserAssets] = useState({});
   const [imageTab, setImageTab] = useState("template");
   const [brandedPreview, setBrandedPreview] = useState(null);
+  const [brandedError, setBrandedError] = useState(false);
   const [tab, setTab] = useState("all");
+  const [tokenUsage, setTokenUsage] = useState(() => { try { return JSON.parse(localStorage.getItem("apex3-tokens")) || { prompt: 0, completion: 0, total: 0, calls: 0 }; } catch { return { prompt: 0, completion: 0, total: 0, calls: 0 }; } });
 
   const notify = useCallback((m, t = "ok") => { setToast({ m, t }); setTimeout(() => setToast(null), 3500); }, []);
+  const trackTokens = useCallback((data) => {
+    const u = data?.usageMetadata;
+    if (!u) return;
+    setTokenUsage(prev => {
+      const next = {
+        prompt: prev.prompt + (u.promptTokenCount || 0),
+        completion: prev.completion + (u.candidatesTokenCount || 0),
+        total: prev.total + (u.totalTokenCount || 0),
+        calls: prev.calls + 1
+      };
+      try { localStorage.setItem("apex3-tokens", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
   const uploadRef = useRef(null);
 
   const compressImage = (file) => new Promise((resolve, reject) => {
@@ -585,13 +602,15 @@ export default function ApexAutopilotV3() {
 
   // Auto-composite branded preview and set default tab when viewing a post
   useEffect(() => {
-    if (!selected) { setBrandedPreview(null); return; }
+    if (!selected) { setBrandedPreview(null); setBrandedError(false); return; }
     if (genImages[selected.id]) {
       setImageTab("branded");
-      compositeBrandedImage(selected).then(setBrandedPreview).catch(() => setBrandedPreview(null));
+      setBrandedError(false);
+      compositeBrandedImage(selected).then(setBrandedPreview).catch(() => { setBrandedPreview(null); setBrandedError(true); });
     } else {
       setImageTab("template");
       setBrandedPreview(null);
+      setBrandedError(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id, genImages[selected?.id]]);
@@ -607,7 +626,7 @@ export default function ApexAutopilotV3() {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify({
-        endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent",
         payload: {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.85, ...(json ? { responseMimeType: "application/json" } : {}) }
@@ -616,6 +635,7 @@ export default function ApexAutopilotV3() {
     });
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Gemini ${res.status}`); }
     const d = await res.json();
+    trackTokens(d);
     return d.candidates[0].content.parts[0].text;
   };
 
@@ -645,6 +665,7 @@ export default function ApexAutopilotV3() {
       });
       if (!res.ok) throw new Error(`Image gen failed: ${res.status}`);
       const d = await res.json();
+      trackTokens(d);
       const imgPart = d.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
       if (imgPart) {
         const dataUrl = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
@@ -724,6 +745,7 @@ export default function ApexAutopilotV3() {
           });
           if (imgRes.ok) {
             const imgData = await imgRes.json();
+            trackTokens(imgData);
             const imgPart = imgData.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
             if (imgPart) {
               setGenImages(prev => ({ ...prev, [post.id]: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}` }));
@@ -790,6 +812,7 @@ export default function ApexAutopilotV3() {
         });
         if (imgRes.ok) {
           const imgData = await imgRes.json();
+          trackTokens(imgData);
           const imgPart = imgData.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
           if (imgPart) {
             setGenImages(prev => ({ ...prev, [post.id]: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}` }));
@@ -882,7 +905,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
 </g>
 <text x="72" y="${footerTextY}" font-family="'Audiowide',sans-serif" font-size="10" fill="rgba(255,255,255,0.3)" letter-spacing="3">APEX</text>
 <text x="142" y="${footerTextY}" font-family="'Outfit',sans-serif" font-size="10" fill="rgba(255,255,255,0.2)">apexagencyxo.vercel.app</text>
-<text x="1032" y="${footerTextY}" font-family="'Audiowide',sans-serif" font-size="10" fill="${accent}" text-anchor="end" letter-spacing="1.5">GET THE THEME &rarr;</text>
+<text x="1032" y="${footerTextY}" font-family="'Audiowide',sans-serif" font-size="10" fill="${accent}" text-anchor="end" letter-spacing="1.5">GET THE THEME &#x2192;</text>
 <line x1="38" y1="${footerLineY}" x2="170" y2="${footerLineY}" stroke="${accent}" stroke-width="2" opacity="0.3"/>
 </svg>`;
   };
@@ -1080,7 +1103,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
           </div>
           <div>
             <h1 style={{ fontSize: 14, fontWeight: 700, margin: 0, letterSpacing: "3px", fontFamily: "Audiowide" }}>APEX AUTOPILOT</h1>
-            <p style={{ fontSize: 9, color: s.t3, margin: 0, letterSpacing: "2px" }}>GEMINI 3.1 PRO × GEMINI 3.1 FLASH IMAGE</p>
+            <p style={{ fontSize: 9, color: s.t3, margin: 0, letterSpacing: "2px" }}>GEMINI 3.1 FLASH × FLASH IMAGE</p>
           </div>
         </div>
         <nav style={{ display: "flex", gap: 2, alignItems: "center" }}>
@@ -1111,7 +1134,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
           {/* ── DASHBOARD ── */}
           {view === "dashboard" && (<div>
             {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 8 }}>
               {[
                 { l: "Total", v: stats.total, c: s.t1 }, { l: "Drafts", v: stats.drafts, c: "#FBBF24" },
                 { l: "Needs Input", v: stats.needsAsset, c: "#F97316" }, { l: "Approved", v: stats.approved, c: s.accent },
@@ -1124,11 +1147,26 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
               ))}
             </div>
 
+            {/* Token Usage */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+              {[
+                { l: "API Calls", v: tokenUsage.calls.toLocaleString(), c: s.t2 },
+                { l: "Prompt Tokens", v: tokenUsage.prompt.toLocaleString(), c: "#A78BFA" },
+                { l: "Output Tokens", v: tokenUsage.completion.toLocaleString(), c: "#34D399" },
+                { l: "Total Tokens", v: tokenUsage.total.toLocaleString(), c: "#FBBF24" }
+              ].map((x, i) => (
+                <div key={i} style={{ background: s.surface, border: `1px solid ${s.border}`, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <p style={{ fontSize: 9, color: s.t3, margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{x.l}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: x.c, margin: 0, fontFamily: "Audiowide" }}>{x.v}</p>
+                </div>
+              ))}
+            </div>
+
             {/* Actions */}
             <div style={{ background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.1)`, padding: 14, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: s.accent, margin: "0 0 2px", fontFamily: "Audiowide" }}>
-                  {!hasKey ? "⚠ Set GEMINI_API_KEY in Vercel env vars" : stats.needsAsset > 0 ? `${stats.needsAsset} منشور يحتاج مدخلاتك` : "AI ready — Gemini 3.1 Pro + 3.1 Flash Image"}
+                  {!hasKey ? "⚠ Set GEMINI_API_KEY in Vercel env vars" : stats.needsAsset > 0 ? `${stats.needsAsset} منشور يحتاج مدخلاتك` : "AI ready — Gemini 3.1 Flash"}
                 </p>
                 <p style={{ fontSize: 10, color: s.t3, margin: 0 }}>
                   {hasKey ? "API key configured on server — secure and ready" : "Vercel Dashboard → Settings → Environment Variables"}
@@ -1283,7 +1321,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
           {/* ── GENERATE ── */}
           {view === "generate" && (<div style={{ maxWidth: 520 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 4px", fontFamily: "Audiowide", letterSpacing: "2px" }}>GENERATE CONTENT</h2>
-            <p style={{ fontSize: 11, color: s.t3, margin: "0 0 20px" }}>Gemini 3.1 Pro writes captions from your real website data. Each post gets a branded SVG template. Posts that need your photos will be flagged.</p>
+            <p style={{ fontSize: 11, color: s.t3, margin: "0 0 20px" }}>Gemini 3.1 Flash writes captions from your real website data. Each post gets a branded SVG template. Posts that need your photos will be flagged.</p>
 
             {!hasKey && <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.12)", padding: 12, marginBottom: 14 }}>
               <p style={{ fontSize: 11, color: "#EF4444", margin: 0 }}>⚠ Set GEMINI_API_KEY in your Vercel environment variables first.</p>
@@ -1510,7 +1548,8 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
               )}
               {imageTab === "branded" && !brandedPreview && genImages[selected.id] && (
                 <div style={{ padding: 20, textAlign: "center", border: `1px solid ${s.border}`, background: s.surface }}>
-                  <p style={{ fontSize: 10, color: s.t3 }}>Compositing branded preview...</p>
+                  <p style={{ fontSize: 10, color: s.t3 }}>{brandedError ? "Failed to composite preview" : "Compositing branded preview..."}</p>
+                  {brandedError && <button onClick={() => { setBrandedError(false); compositeBrandedImage(selected).then(setBrandedPreview).catch(() => { setBrandedPreview(null); setBrandedError(true); }); }} style={{ marginTop: 8, fontSize: 10, color: s.accent, background: "none", border: `1px solid ${s.accent}`, padding: "4px 12px", cursor: "pointer" }}>Retry</button>}
                 </div>
               )}
 
@@ -1630,7 +1669,7 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
 
             <div style={{ padding: 10, background: s.surface, border: `1px solid ${s.border}`, marginBottom: 12 }}>
               <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, margin: "0 0 6px", letterSpacing: "1px" }}>SERVER STATUS</p>
-              {[{ l: "Gemini 3.1 Pro (text)", ok: hasKey }, { l: "Gemini 3.1 Flash Image", ok: hasKey }].map(x => (
+              {[{ l: "Gemini 3.1 Flash (text)", ok: hasKey }, { l: "Gemini 3.1 Flash Image", ok: hasKey }].map(x => (
                 <div key={x.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
                   <span style={{ color: s.t3 }}>{x.l}</span>
                   <span style={{ color: x.ok ? s.accent : "#EF4444" }}>{x.ok ? "✓ Connected" : "✗ Not configured"}</span>
@@ -1645,12 +1684,30 @@ ${tl.map((l, i) => `<text x="60" y="${titleY + i * 48}" font-family="'Audiowide'
             </div>
 
             <div style={{ padding: 10, background: "rgba(0,229,204,0.03)", border: `1px solid rgba(0,229,204,0.08)`, marginBottom: 12 }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: s.accent, margin: "0 0 4px" }}>MONTHLY COST</p>
+              <p style={{ fontSize: 9, fontWeight: 600, color: s.accent, margin: "0 0 4px" }}>MONTHLY COST ESTIMATE</p>
               <p style={{ fontSize: 9, color: s.t3, margin: 0, lineHeight: 1.7 }}>
-                Gemini 3.1 Pro (20 captions): ~$0.16<br />
+                Gemini 3.1 Flash (20 captions): ~$0.02<br />
                 Gemini 3.1 Flash Image (20 images): ~$1.34<br />
-                <strong style={{ color: s.t2 }}>Total: ~$1.50/month</strong>
+                <strong style={{ color: s.t2 }}>Total: ~$1.36/month</strong>
               </p>
+            </div>
+
+            <div style={{ padding: 10, background: s.surface, border: `1px solid ${s.border}`, marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <p style={{ fontSize: 9, fontWeight: 600, color: s.t3, margin: 0, letterSpacing: "1px" }}>TOKEN USAGE</p>
+                <button onClick={() => { setTokenUsage({ prompt: 0, completion: 0, total: 0, calls: 0 }); try { localStorage.removeItem("apex3-tokens"); } catch {} notify("Token usage reset"); }} style={{ fontSize: 8, color: "#EF4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Reset</button>
+              </div>
+              {[
+                { l: "API Calls", v: tokenUsage.calls },
+                { l: "Prompt Tokens", v: tokenUsage.prompt.toLocaleString() },
+                { l: "Output Tokens", v: tokenUsage.completion.toLocaleString() },
+                { l: "Total Tokens", v: tokenUsage.total.toLocaleString() }
+              ].map(x => (
+                <div key={x.l} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}>
+                  <span style={{ color: s.t3 }}>{x.l}</span>
+                  <span style={{ color: s.t2 }}>{x.v}</span>
+                </div>
+              ))}
             </div>
 
             <Btn danger small onClick={logout} style={{ width: "100%" }}>LOGOUT</Btn>
